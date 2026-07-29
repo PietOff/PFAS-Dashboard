@@ -163,7 +163,65 @@ app.get(['/v1/signalen', '/api/v1/signalen'], async (req, res) => {
 
 exports.pfasApi = functions.https.onRequest(app);
 
-const { checkOfficieleBekendmakingen } = require('./checkBekendmakingen');
+const { checkOfficieleBekendmakingen, sweepBekendmakingen, herbouwAfwijkingen } = require('./checkBekendmakingen');
+
+// ============================================================
+// WEKELIJKSE SWEEP: alle PFAS-bekendmakingen
+// ============================================================
+// Draait elke maandag om 03:00. Haalt alle gemeentebladen op die sinds de
+// vorige geslaagde run zijn gepubliceerd, verwerkt nieuwe documenten met de AI
+// en herberekent daarna per gemeente of er afwijkend beleid geldt.
+//
+// Elk document wordt maar één keer door de AI gehaald, dus een wekelijkse run
+// kost alleen API-calls voor wat er nieuw bij is gekomen.
+exports.weeklyBekendmakingenSweep = functions
+  .runWith({ timeoutSeconds: 540, memory: '512MB', secrets: ["GEMINI_API_KEY"] })
+  .pubsub
+  .schedule('0 3 * * 1')
+  .timeZone('Europe/Amsterdam')
+  .onRun(async () => {
+    const resultaat = await sweepBekendmakingen(db);
+    console.log('Wekelijkse sweep afgerond:', JSON.stringify(resultaat));
+    return null;
+  });
+
+// Handmatige sweep / backfill.
+//   ?vanaf=2019-01-01   ondergrens (standaard: watermerk van de vorige run)
+//   ?max=200            rem op het aantal nieuwe AI-extracties in deze run
+//   ?forceer=true       alle documenten opnieuw analyseren
+//
+// De eerste keer draai je dit met een vroege vanaf-datum om het corpus op te
+// bouwen. Omdat verwerkte documenten worden onthouden, kun je de functie
+// gewoon opnieuw aanroepen tot alles binnen is — hij pakt op waar hij bleef.
+exports.sweepBekendmakingenNow = functions
+  .runWith({ timeoutSeconds: 540, memory: '512MB', secrets: ["GEMINI_API_KEY"] })
+  .https.onRequest(async (req, res) => {
+    try {
+      const resultaat = await sweepBekendmakingen(db, {
+        vanaf: req.query.vanaf,
+        forceer: req.query.forceer === 'true',
+        maxDocumenten: parseInt(req.query.max) || 200
+      });
+      res.json({ succes: true, resultaat });
+    } catch (error) {
+      console.error('Sweep gefaald:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+// Herberekent alleen de afgeleide toestand per gemeente uit het al opgebouwde
+// documentcorpus. Geen AI-calls, geen netwerk — handig na het handmatig
+// corrigeren van een document.
+exports.herbouwAfwijkingenNow = functions
+  .runWith({ timeoutSeconds: 300 })
+  .https.onRequest(async (req, res) => {
+    try {
+      res.json({ succes: true, resultaat: await herbouwAfwijkingen(db) });
+    } catch (error) {
+      console.error('Herbouw gefaald:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
 // ============================================================
 // NACHTELIJKE CHECK: Officiële Bekendmakingen (overheid.nl)
@@ -394,6 +452,7 @@ exports.auditData = functions.runWith({ timeoutSeconds: 300 }).https.onRequest(a
     const zwakkeBronnen = [];
     const verouderd = [];
     let afwijkendBeleid = 0;
+    const herkomst = {};
 
     const vandaag = new Date();
 
@@ -406,6 +465,7 @@ exports.auditData = functions.runWith({ timeoutSeconds: 300 }).https.onRequest(a
       inDb.set(id, data);
 
       if (data.heeftAfwijkendBeleid === true) afwijkendBeleid++;
+      herkomst[data.herkomst || 'onbekend'] = (herkomst[data.herkomst || 'onbekend'] || 0) + 1;
 
       // Waarden plausibel?
       for (const stof of ['pfos', 'pfoa', 'genx']) {
@@ -477,6 +537,10 @@ exports.auditData = functions.runWith({ timeoutSeconds: 300 }).https.onRequest(a
         verouderd: verouderd.length,
         metAfwijkendBeleid: afwijkendBeleid
       },
+      // Waar komt het getal per gemeente vandaan? 'landelijk-kader-aanname'
+      // betekent: geen officieel document gevonden, landelijk kader aangenomen.
+      // Dat is geen vaststelling en hoort in de UI ook niet zo te ogen.
+      herkomst,
       bron: lijst.bron,
       bronWaarschuwingen: lijst.waarschuwingen,
       // Gemeenten die de canonieke lijst wel kent maar Firestore niet

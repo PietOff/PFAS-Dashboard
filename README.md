@@ -132,33 +132,85 @@ curl "https://<regio>-pfas-dashboard-nl-a808d.cloudfunctions.net/auditData" | jq
 Draai dit na elke scraper-run. Alles behalve `dekkingProcent: 100` met nul
 `ontbrekend` en nul `verweesd` betekent dat het dashboard gaten heeft.
 
+### De wekelijkse sweep
+
+Elke maandag om 03:00 draait `weeklyBekendmakingenSweep`. Die haalt alle
+gemeentebladen op die sinds de vorige geslaagde run zijn gepubliceerd over
+PFAS-bodembeleid, analyseert nieuwe documenten en herberekent daarna per
+gemeente of er afwijkend beleid geldt.
+
+Twee collecties:
+
+| Collectie | Wat |
+| --- | --- |
+| `pfasDocumenten/<identifier>` | Elk verwerkt gemeenteblad met de AI-analyse |
+| `pfasData/<gemeente>` | De hieruit **afgeleide** toestand per gemeente |
+
+`pfasData` wordt volledig herleid uit `pfasDocumenten` en niet bijgewerkt met
+losse ad-hoc updates. Daardoor is het resultaat reproduceerbaar: dezelfde
+documenten geven altijd dezelfde uitkomst, ongeacht in welke volgorde ze ooit
+binnenkwamen.
+
+Elk document gaat precies één keer door de AI. Een wekelijkse volledige sweep
+kost dus alleen API-calls voor wat er nieuw bij is gekomen.
+
+**Eerste keer: het corpus opbouwen.** De sweep kent alleen wat hij ooit gezien
+heeft, dus begin met een backfill over de hele historie:
+
+```bash
+curl "https://<regio>-…/sweepBekendmakingenNow?vanaf=2019-01-01&max=200"
+```
+
+Verwerkte documenten worden onthouden, dus roep dit gewoon herhaald aan tot
+`verwerkt: 0` — hij pakt op waar hij bleef. Daarna neemt de wekelijkse run het
+over.
+
+Het watermerk staat in `config/bekendmakingenSweep`. De sweep gebruikt dat in
+plaats van een vast venster van zeven dagen: als een run faalt of overgeslagen
+wordt, ontstaat er anders een gat dat nooit meer gedicht wordt.
+
 ### Juistheid: kloppen de getallen?
 
-**De app scrapet de getallen niet en hoort dat ook niet te doen.**
-`pfas_normen.json` is leidend: het landelijk kader plus een handmatig
-geverifieerde lijst van gemeenten die daarvan afwijken. `getHardcodedData()`
-geeft die waarden terug; de AI-scan schrijft nooit een getal naar het dashboard.
+De sweep leidt de getallen af uit officiële gemeentebladen. Dat is de enige
+machineleesbare bron die als vaststaand mag gelden: wat daar staat is juridisch
+bindend vastgesteld beleid.
 
-Dat is bewust. Een gehallucineerde norm voor grondverzet is erger dan geen norm,
-want iemand handelt ernaar. Meer gemeenten scrapen maakt geen enkel getal
-juister — het vult alleen meer rijen met dezelfde aanname.
+Alleen dat is niet genoeg om een getal te vertrouwen. Er zitten drie horden
+tussen "de AI las een getal" en "dit getal komt in het dashboard":
 
-De juistheid hangt dus aan één vraag: **klopt de lijst met afwijkende
-gemeenten?** Op dit moment staan er 12 in. Elke gemeente die lokaal beleid heeft
-maar niet in die lijst staat, toont nu het landelijk kader alsof dat vaststaat.
+1. **Plausibiliteit.** Waarden buiten 0–50 µg/kg ds worden verworpen; dat is
+   bijna altijd een eenheidsverwarring (ng/kg) of een ander stofnummer.
+2. **Zekerheid.** Alleen `aiZekerheid: "hoog"` telt mee bij het afleiden.
+3. **Nooit null overschrijven.** Vult de AI maar één klasse in, dan blijven de
+   andere staan op wat er al was of op het landelijk kader.
 
-Er bestaat geen landelijk register van lokale PFAS-normen, dus dit is geen
-technisch probleem dat je wegprogrammeert. Wat het systeem wel kan:
+Wat de sweep **niet** kan, en wat je moet weten voordat je hierop test:
 
-1. **Officiële Bekendmakingen als enige automatische bron.** `checkBekendmakingen`
-   leest de SRU API van KOOP. Dat is juridisch bindend gepubliceerd beleid — de
-   enige machineleesbare bron die als vaststaand mag gelden.
-2. **Alles anders belandt in `pfasSignalen`** voor handmatige review, niet in het
-   dashboard.
-3. **Toon het verschil in de UI.** Een waarde die uit een gemeenteblad komt is
-   iets anders dan de aanname "volgt landelijk kader". `heeftAfwijkendBeleid`,
-   `bronType` en `confidenceScore` staan al in de documenten; presenteer een
-   aanname nooit als een vaststelling.
+- Een gemeente kan afwijkend beleid hebben dat nooit als gemeenteblad met deze
+  zoektermen is gepubliceerd. Die blijft op de aanname staan.
+- De extractie leest maar de eerste 8000 tekens van een document. Staan de
+  tabellen verderop, dan vindt hij ze niet.
+- De AI leest een PDF-bijlage niet; alleen de HTML-tekst van de bekendmaking.
+
+Daarom krijgt elke gemeente een expliciete `herkomst`:
+
+| `herkomst` | Betekenis |
+| --- | --- |
+| `officiele-bekendmaking` | Waarden komen uit een gemeenteblad; `bronDocument` verwijst naar het exacte besluit |
+| `landelijk-kader-aanname` | **Geen document gevonden.** Het landelijk kader is aangenomen, niet vastgesteld |
+| `handmatig` | Handmatig overschreven via de Google Sheet |
+
+Zie de verdeling met `auditData`:
+
+```bash
+curl "https://<regio>-…/auditData" | jq .herkomst
+```
+
+**Presenteer `landelijk-kader-aanname` in de UI nooit als een vaststelling.**
+Voor iemand die op basis hiervan grond laat keuren is het verschil tussen "dit
+is vastgesteld beleid" en "hier is niets over gevonden" precies het verschil dat
+telt. Het dashboard hoort daarbij door te verwijzen naar de bronlink en de
+omgevingsdienst — het vervangt geen milieuhygiënische verklaring.
 
 ### Bronlinks
 

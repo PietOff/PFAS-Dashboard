@@ -76,7 +76,10 @@ test('index.js laadt en exporteert alle Cloud Functions', () => {
     'syncSheetNow',
     'findRealLinks',
     'mergeDuplicateDocs',
-    'auditData'
+    'auditData',
+    'weeklyBekendmakingenSweep',
+    'sweepBekendmakingenNow',
+    'herbouwAfwijkingenNow'
   ];
 
   for (const naam of verwacht) {
@@ -207,6 +210,33 @@ test('gemeentelijst keurt een onwaarschijnlijk aantal gemeenten af', () => {
   // lege of half geladen bron wordt afgekeurd in plaats van gebruikt.
   assert.ok(MIN_GEMEENTEN < 342 && MAX_GEMEENTEN > 342, 'marge sluit 342 niet in');
   assert.ok(MIN_GEMEENTEN > 200, 'ondergrens te laag om iets af te vangen');
+});
+
+// ------------------------------------------------------------------
+test('de SRU-query is geldige CQL met serverside datumfilter', () => {
+  const { bouwCqlQuery } = require('../checkBekendmakingen');
+
+  const q = bouwCqlQuery({ vanaf: '2024-01-01' });
+
+  // De oude query was kale booleaanse tekst zonder indexnamen; de API verwacht CQL.
+  assert.ok(q.includes('c.product-area=="officielepublicaties"'), 'product-area ontbreekt');
+  assert.ok(q.includes('w.publicatienaam=="Gemeenteblad"'), 'publicatienaam-filter ontbreekt');
+  assert.ok(q.includes('cql.textAndIndexes='), 'tekstindex ontbreekt');
+
+  // Datumfilter MOET serverside staan, anders paginereert hij over de verkeerde set.
+  assert.ok(q.includes('dt.modified>="2024-01-01"'), 'serverside datumfilter ontbreekt');
+
+  // Zonder datum geen datumfilter (backfill over het hele corpus)
+  assert.ok(!bouwCqlQuery({}).includes('dt.modified'), 'datumfilter hoort weg te blijven zonder vanaf');
+});
+
+// ------------------------------------------------------------------
+test('de SRU-connectie is oep, niet de product-area', () => {
+  const fs2 = require('fs');
+  const bron = fs2.readFileSync(path.join(wortel, 'checkBekendmakingen.js'), 'utf8');
+  assert.ok(/SRU_CONNECTION\s*=\s*'oep'/.test(bron), "x-connection moet 'oep' zijn");
+  assert.ok(!/x-connection=officielepublicaties/.test(bron),
+    'x-connection=officielepublicaties is de product-area, niet de connectienaam');
 });
 
 // ------------------------------------------------------------------
