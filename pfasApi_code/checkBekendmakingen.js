@@ -21,6 +21,7 @@
 const axios = require('axios');
 const { GoogleGenAI } = require('@google/genai');
 const pfasNormen = require('./pfas_normen.json');
+const { toDocId } = require('./docId');
 
 const SRU_BASE = 'https://zoek.officielebekendmakingen.nl/sru/Search';
 
@@ -243,6 +244,34 @@ function valideerWaarden(waarden) {
 
 
 /**
+ * Voeg de gevonden waarden voor één stof samen met een basis (het landelijk
+ * kader of de al opgeslagen waarden).
+ *
+ * De AI vult vaak maar één of twee van de drie klassen in en zet de rest op
+ * null. Die nulls mogen niet naar Firestore geschreven worden, want dan
+ * verdwijnen geldige waarden uit het dashboard.
+ *
+ * @returns {Object|null} - Samengevoegde waarden, of null als er niets bruikbaars in zat.
+ */
+function mergeStofWaarden(gevonden, basis) {
+  if (!gevonden) return null;
+
+  const samengevoegd = { ...basis };
+  let heeftWaarde = false;
+
+  for (const klasse of ['wonen', 'industrie', 'landbouwNatuur']) {
+    const val = gevonden[klasse];
+    if (typeof val === 'number' && Number.isFinite(val)) {
+      samengevoegd[klasse] = val;
+      heeftWaarde = true;
+    }
+  }
+
+  return heeftWaarde ? samengevoegd : null;
+}
+
+
+/**
  * Check of de gevonden waarden daadwerkelijk AFWIJKEN van het landelijk kader
  */
 function wijktAfVanLandelijkKader(waarden) {
@@ -303,8 +332,18 @@ async function checkOfficieleBekendmakingen(db, dagenTerug = 7) {
     resultaten.gecontroleerd++;
     console.log(`\n📄 [${pub.date}] ${pub.gemeente}: ${pub.title}`);
     console.log(`   URL: ${pub.url}`);
-    
+
     try {
+      // De SRU-feed levert niet altijd een creator (gemeentenaam) of url mee.
+      // Zonder die twee kunnen we niets zinnigs opslaan, dus sla over in plaats
+      // van verderop te crashen op pub.gemeente.toLowerCase().
+      const docId = toDocId(pub.gemeente);
+      if (!docId || !pub.url) {
+        console.log('   ⚠️ Publicatie mist gemeentenaam of URL, overslaan.');
+        resultaten.fouten++;
+        continue;
+      }
+
       // 2. Haal documenttekst op
       const tekst = await haalDocumentTekst(pub.url);
       if (!tekst) {
@@ -339,7 +378,6 @@ async function checkOfficieleBekendmakingen(db, dagenTerug = 7) {
       }
       
       // 5. Sla op als signaal
-      const docId = pub.gemeente.toLowerCase().replace(/\s+/g, '-');
       const signaalData = {
         gemeente: pub.gemeente,
         signaal: analyse.toelichting,
@@ -376,11 +414,17 @@ async function checkOfficieleBekendmakingen(db, dagenTerug = 7) {
           bronType: 'officielebekendmakingen.nl'
         };
         
-        // Voeg de gevonden waarden toe
-        if (analyse.gevondenWaarden.pfos) updateData.pfos = analyse.gevondenWaarden.pfos;
-        if (analyse.gevondenWaarden.pfoa) updateData.pfoa = analyse.gevondenWaarden.pfoa;
-        if (analyse.gevondenWaarden.genx) updateData.genx = analyse.gevondenWaarden.genx;
-        
+        // Voeg de gevonden waarden toe. Ontbrekende klassen vallen terug op de
+        // waarden die al in Firestore staan, anders op het landelijk kader —
+        // nooit op null.
+        const bestaand = (await db.collection('pfasData').doc(docId).get()).data() || {};
+        const gevonden = analyse.gevondenWaarden || {};
+
+        for (const stof of ['pfos', 'pfoa', 'genx']) {
+          const samengevoegd = mergeStofWaarden(gevonden[stof], bestaand[stof] || LANDELIJK[stof]);
+          if (samengevoegd) updateData[stof] = samengevoegd;
+        }
+
         await db.collection('pfasData').doc(docId).set(updateData, { merge: true });
         
         signaalData.status = 'automatisch-verwerkt';
@@ -393,8 +437,13 @@ async function checkOfficieleBekendmakingen(db, dagenTerug = 7) {
         resultaten.signalen++;
       }
       
-      // Sla het signaal altijd op (voor audit trail)
-      await db.collection('pfasSignalen').doc(`${docId}-${pub.identifier}`).set(signaalData, { merge: true });
+      // Sla het signaal altijd op (voor audit trail).
+      // Zonder identifier zou het id op "-null" eindigen en elke volgende
+      // publicatie van dezelfde gemeente overschrijven.
+      const signaalId = pub.identifier
+        ? `${docId}-${toDocId(pub.identifier)}`
+        : `${docId}-${pub.date || 'onbekend'}`;
+      await db.collection('pfasSignalen').doc(signaalId).set(signaalData, { merge: true });
       
     } catch (err) {
       console.error(`   ❌ Fout bij verwerken: ${err.message}`);

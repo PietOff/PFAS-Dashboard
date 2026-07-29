@@ -1,0 +1,26 @@
+{
+  "functions": [
+    {
+      "source": "pfasApi_code",
+      "codebase": "default",
+      "runtime": "nodejs20",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "test",
+        "test-*.js",
+        "clean.js",
+        "seed.js",
+        "migrate-links.js",
+        "fix-all-links.js",
+        "run-scraper-now.js"
+      ]
+    }
+  ],
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

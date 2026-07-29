@@ -1,7 +1,10 @@
 const admin = require('firebase-admin');
-const serviceAccount = require('./serviceAccountKey.json'); // assuming it doesn't exist, we'll try without if it fails
+
+// serviceAccountKey.json bestaat niet in deze repo (en hoort er ook niet in);
+// gebruik Application Default Credentials via `firebase login` / gcloud.
 admin.initializeApp({
-  credential: admin.credential.applicationDefault()
+  credential: admin.credential.applicationDefault(),
+  projectId: process.env.GCLOUD_PROJECT || 'pfas-dashboard-nl-a808d'
 });
 const db = admin.firestore();
 

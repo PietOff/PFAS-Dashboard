@@ -2,6 +2,8 @@ const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const express = require('express');
 const cors = require('cors');
+const { runWeeklyScraper } = require('./scraper');
+const { toDocId } = require('./docId');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -243,7 +245,7 @@ exports.fillDefaultData = functions.runWith({ timeoutSeconds: 540 }).https.onReq
         bronLink: "https://www.bodemplus.nl/onderwerpen/wet-regelgeving/rubrieken/pfas/handelingskader/"
       };
 
-      const docRef = db.collection('pfasData').doc(naam.toLowerCase().replace(/\\s+/g, '-'));
+      const docRef = db.collection('pfasData').doc(toDocId(naam));
       currentBatch.set(docRef, defaultData, { merge: true });
       count++;
       
@@ -343,9 +345,12 @@ exports.fixLinks = functions.runWith({ timeoutSeconds: 540 }).https.onRequest(as
     const snapshot = await db.collection('pfasData').get();
     let fixedValues = 0;
     let fixedLinks = 0;
-    
-    const batch = db.batch();
-    
+
+    // Firestore staat maximaal 500 schrijfacties per batch toe. Met ~342
+    // gemeenten (en meer zodra er dubbele documenten in staan) liep één enkele
+    // batch daar overheen en faalde de hele functie.
+    const updates = [];
+
     snapshot.forEach(doc => {
       const data = doc.data();
       const gemeente = data.gemeente || doc.id;
@@ -399,15 +404,105 @@ exports.fixLinks = functions.runWith({ timeoutSeconds: 540 }).https.onRequest(as
       }
       
       // 3. Update het document
-      batch.update(doc.ref, correcteWaarden);
+      updates.push({ ref: doc.ref, data: correcteWaarden });
       fixedValues++;
     });
-    
-    await batch.commit();
+
+    const BATCH_LIMIET = 400;
+    for (let i = 0; i < updates.length; i += BATCH_LIMIET) {
+      const batch = db.batch();
+      for (const u of updates.slice(i, i + BATCH_LIMIET)) {
+        batch.update(u.ref, u.data);
+      }
+      await batch.commit();
+    }
     res.send(`Succes! ${fixedValues} gemeenten gereset naar correcte hardcoded PFAS waarden. ${fixedLinks} bronlinks bijgewerkt. (${snapshot.size} totaal)`);
   } catch (error) {
     console.error("Fout bij fixen data:", error);
     res.status(500).send("Fout: " + error.message);
+  }
+});
+
+// ============================================================
+// OPRUIMEN: dubbele documenten samenvoegen
+// ============================================================
+// fillDefaultData en syncSheet gebruikten `/\\s+/g` in plaats van `/\s+/g`.
+// Die regex matcht een letterlijke backslash, geen spatie, dus kreeg elke
+// gemeente met een spatie in de naam twee documenten:
+//   "bergen op zoom"  (fillDefaultData / syncSheet)
+//   "bergen-op-zoom"  (scraper / checkBekendmakingen)
+//
+// De code schrijft nu overal hetzelfde id, maar de dubbelen die al in
+// Firestore staan blijven bestaan. Deze functie voegt ze samen.
+//
+// Standaard is dit een DROOGLOOP die alleen rapporteert wat er zou gebeuren.
+// Pas met ?apply=true worden documenten daadwerkelijk samengevoegd en verwijderd.
+exports.mergeDuplicateDocs = functions.runWith({ timeoutSeconds: 540 }).https.onRequest(async (req, res) => {
+  const apply = req.query.apply === 'true';
+
+  try {
+    const snapshot = await db.collection('pfasData').get();
+
+    // Groepeer alle documenten op hun canonieke id
+    const perCanoniekId = new Map();
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const canoniek = toDocId(data.gemeente || doc.id);
+      if (!canoniek) return;
+      if (!perCanoniekId.has(canoniek)) perCanoniekId.set(canoniek, []);
+      perCanoniekId.get(canoniek).push({ id: doc.id, ref: doc.ref, data });
+    });
+
+    const acties = [];
+
+    for (const [canoniek, docs] of perCanoniekId) {
+      const strays = docs.filter(d => d.id !== canoniek);
+      if (strays.length === 0) continue;
+
+      const canoniekeDoc = docs.find(d => d.id === canoniek);
+
+      // Handmatige overschrijvingen (via Google Sheets) winnen altijd, daarna
+      // het canonieke document, daarna de rest.
+      const prioriteit = [...docs].sort((a, b) => {
+        if (a.data.handmatigeOverschrijving !== b.data.handmatigeOverschrijving) {
+          return a.data.handmatigeOverschrijving ? -1 : 1;
+        }
+        if ((a.id === canoniek) !== (b.id === canoniek)) return a.id === canoniek ? -1 : 1;
+        return String(b.data.laatstGeupdate || '').localeCompare(String(a.data.laatstGeupdate || ''));
+      });
+
+      // Minst belangrijke eerst samenvoegen, zodat de belangrijkste bovenop komt
+      const samengevoegd = {};
+      for (const d of [...prioriteit].reverse()) {
+        Object.assign(samengevoegd, d.data);
+      }
+      samengevoegd.gemeente = samengevoegd.gemeente || canoniek;
+
+      acties.push({
+        canoniek,
+        behoudt: canoniek,
+        verwijdert: strays.map(s => s.id),
+        canoniekBestondAl: Boolean(canoniekeDoc)
+      });
+
+      if (apply) {
+        await db.collection('pfasData').doc(canoniek).set(samengevoegd, { merge: true });
+        for (const stray of strays) {
+          await stray.ref.delete();
+        }
+      }
+    }
+
+    res.json({
+      modus: apply ? 'UITGEVOERD' : 'DROOGLOOP (voeg ?apply=true toe om door te voeren)',
+      documentenTotaal: snapshot.size,
+      gemeentenMetDubbelen: acties.length,
+      documentenTeVerwijderen: acties.reduce((n, a) => n + a.verwijdert.length, 0),
+      details: acties
+    });
+  } catch (error) {
+    console.error('Fout bij samenvoegen dubbelen:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

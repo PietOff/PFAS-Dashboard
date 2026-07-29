@@ -8,6 +8,13 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
+// Case-insensitieve lookup, net als de rest van de codebase doet. De sleutels
+// in gemeente_mapping.json staan in de officiele schrijfwijze ("Aa en Hunze"),
+// terwijl Firestore soms een andere casing bevat.
+const genormaliseerdeMapping = new Map(
+  Object.entries(mapping).map(([k, v]) => [k.toLowerCase().trim(), v])
+);
+
 async function run() {
   console.log('Fetching all documents from pfasData...');
   const snapshot = await db.collection('pfasData').get();
@@ -17,10 +24,12 @@ async function run() {
   
   snapshot.forEach(doc => {
     const data = doc.data();
-    const naam = data.naam;
+    // De documenten hebben een veld `gemeente`, geen `naam`. Met `data.naam`
+    // was mapping[undefined] altijd undefined en deed dit script niets.
+    const naam = data.gemeente;
     const currentLink = data.bronLink;
-    const correctLink = mapping[naam];
-    
+    const correctLink = naam ? genormaliseerdeMapping.get(naam.toLowerCase().trim()) : undefined;
+
     if (correctLink && currentLink !== correctLink) {
       updates.push({ ref: doc.ref, naam, currentLink, correctLink });
     }

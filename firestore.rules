@@ -1,0 +1,32 @@
+rules_version = '2';
+
+// De dashboarddata is openbare overheidsinformatie: iedereen mag lezen.
+// Schrijven gebeurt uitsluitend door de Cloud Functions, en die gebruiken de
+// Admin SDK — die omzeilt deze rules volledig. Clients mogen dus nooit schrijven.
+//
+// Let op: als het project nog op de tijdelijke "test mode" rules stond, dan
+// verliepen die na 30 dagen en werd daarna ALLE toegang geweigerd. Dat is een
+// veelvoorkomende oorzaak van een dashboard dat "ineens leeg is".
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /pfasData/{gemeente} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /pfasSignalen/{signaal} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Bevat o.a. het Google Sheet-id: niet publiek leesbaar.
+    match /config/{document} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -4,6 +4,7 @@ const admin = require('firebase-admin');
 const { getAdapterData } = require('./adapters/index');
 const gemeenteMapping = require('./gemeente_mapping.json');
 const pfasNormen = require('./pfas_normen.json');
+const { toDocId } = require('./docId');
 
 // ============================================================
 // PRIMAIRE DATABRON: Hardcoded, geverifieerde PFAS normen
@@ -141,6 +142,8 @@ async function scanForNewPolicy(gemeenteNaam) {
 // ============================================================
 
 module.exports = {
+  getHardcodedData,
+  scanForNewPolicy,
   runWeeklyScraper: async (db, batchIndex = null, specificGemeenteNaam = null) => {
     console.log(`Starting scraper. Mode: ${batchIndex !== null ? batchIndex : (specificGemeenteNaam || 'ALL')}`);
 
@@ -191,7 +194,7 @@ module.exports = {
       console.log("Verwerken:", gemeenteNaam);
 
       try {
-        const docId = gemeenteNaam.toLowerCase().replace(/\s+/g, '-');
+        const docId = toDocId(gemeenteNaam);
 
         // 1. Controleer of de gemeente handmatig is overschreven (via Google Sheets)
         const existingDoc = await db.collection('pfasData').doc(docId).get();

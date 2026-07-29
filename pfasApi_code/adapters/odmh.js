@@ -1,4 +1,6 @@
-const fetch = require('node-fetch'); // Let op: afhankelijk van je Node versie, in nieuwste is het ingebouwd.
+// Deze stub doet nog geen netwerkaanroep. Zodra dat wel gebeurt: gebruik de
+// globale fetch() van Node 20 — node-fetch stond niet in package.json en werd
+// alleen per ongeluk gevonden via een transitieve dependency van firebase-admin.
 
 /**
  * Adapter voor Omgevingsdienst Midden-Holland (ODMH)
