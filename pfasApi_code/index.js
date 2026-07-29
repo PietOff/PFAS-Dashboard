@@ -6,6 +6,11 @@ const { runWeeklyScraper } = require('./scraper');
 const { toDocId } = require('./docId');
 const { haalGemeenteLijst } = require('./gemeentelijst');
 
+// Landelijk kader bij het Informatiepunt Leefomgeving (opvolger van bodemplus.nl).
+const LANDELIJK_KADER_LINK =
+  'https://iplo.nl/thema/bodem/regelgeving/hergebruik-bouwstoffen-grond-of-baggerspecie/' +
+  'kwaliteitseisen-toepassen-grond-baggerspecie/handelingskader-pfas/';
+
 admin.initializeApp();
 const db = admin.firestore();
 
@@ -24,7 +29,7 @@ const fallbackData = [
     genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 0.8 },
     laatstGeupdate: "2024-01-15",
     opmerkingen: "Volgt landelijk Handelingskader voor grondverzet. Kaarten en details via DCMR bodemloket.",
-    bronLink: "https://www.dcmr.nl/bodem/pfas"
+    bronLink: "https://www.dcmr.nl/pfas-in-de-bodem"
   },
   {
     id: "2",
@@ -36,7 +41,7 @@ const fallbackData = [
     genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 0.8 },
     laatstGeupdate: "2025-01-01",
     opmerkingen: "Nieuwe Bodemkwaliteitskaart in 2025 vastgesteld. Let op: alle PFAS gelden als ZZS.",
-    bronLink: "https://odnzkg.nl/themas/bodem/pfas/"
+    bronLink: "https://odnzkg.nl/kaarten/pfas-bodemkwaliteitskaart/"
   },
   {
     id: "3",
@@ -48,7 +53,7 @@ const fallbackData = [
     genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 0.8 },
     laatstGeupdate: "2024-05-12",
     opmerkingen: "Volgt landelijk handelingskader (update dec 2023).",
-    bronLink: "https://odbn.nl/pfas/"
+    bronLink: "https://odbn.nl/expertises/bodem/pfas"
   }
 ];
 
@@ -73,7 +78,7 @@ app.get(['/v1/gemeenten', '/api/v1/gemeenten'], async (req, res) => {
           "genx": { "wonen": 3, "industrie": 3, "landbouwNatuur": 0.8 },
           "laatstGeupdate": "2024-01-15",
           "opmerkingen": "Volgt landelijk Handelingskader voor grondverzet.",
-          "bronLink": "https://www.dcmr.nl/bodem/pfas"
+          "bronLink": "https://www.dcmr.nl/pfas-in-de-bodem"
         },
         {
           "id": "2",
@@ -85,7 +90,7 @@ app.get(['/v1/gemeenten', '/api/v1/gemeenten'], async (req, res) => {
           "genx": { "wonen": 3, "industrie": 3, "landbouwNatuur": 0.8 },
           "laatstGeupdate": "2025-10-06",
           "opmerkingen": "Bodemkwaliteitskaart Amsterdam (ACN) 2025 vastgesteld.",
-          "bronLink": "https://odnzkg.nl/themas/bodem/pfas/"
+          "bronLink": "https://odnzkg.nl/kaarten/pfas-bodemkwaliteitskaart/"
         },
         {
           "id": "3",
@@ -97,7 +102,7 @@ app.get(['/v1/gemeenten', '/api/v1/gemeenten'], async (req, res) => {
           "genx": { "wonen": 3, "industrie": 3, "landbouwNatuur": 0.8 },
           "laatstGeupdate": "2024-05-12",
           "opmerkingen": "Volgt landelijk handelingskader.",
-          "bronLink": "https://odbn.nl/pfas/"
+          "bronLink": "https://odbn.nl/expertises/bodem/pfas"
         }
       ];
     }
@@ -241,7 +246,10 @@ exports.fillDefaultData = functions.runWith({ timeoutSeconds: 540 }).https.onReq
         heeftAfwijkendBeleid: false,
         laatstGeupdate: new Date().toISOString().split('T')[0],
         opmerkingen: "Geen specifiek lokaal beleid geüploaded; toont Tijdelijk Handelingskader PFAS (RIVM). Raadpleeg de regionale Omgevingsdienst voor actuele lokale regels.",
-        bronLink: "https://www.bodemplus.nl/onderwerpen/wet-regelgeving/rubrieken/pfas/handelingskader/"
+        // bodemplus.nl is opgevolgd door het Informatiepunt Leefomgeving.
+        // migrate-links.js bestaat juist om die oude link weg te werken; hier
+        // werd hij daarna telkens opnieuw ingezet.
+        bronLink: LANDELIJK_KADER_LINK
       };
 
       const docRef = db.collection('pfasData').doc(toDocId(naam));
@@ -269,71 +277,11 @@ exports.fillDefaultData = functions.runWith({ timeoutSeconds: 540 }).https.onReq
   }
 });
 
-// Mapping van alle Omgevingsdiensten naar hun PFAS/bodem pagina
-// Keys = exact zoals opgeslagen in Firestore (case-insensitive matching)
-const OD_LINK_MAP = {
-  // Zuid-Holland
-  'DCMR': 'https://www.dcmr.nl/over-dcmr/thema-s/bodem/pfas.html',
-  'DCMR Milieudienst Rijnmond': 'https://www.dcmr.nl/over-dcmr/thema-s/bodem/pfas.html',
-  'Omgevingsdienst Midden-Holland': 'https://www.odmh.nl/themas/bodem/bodemkwaliteitskaart/',
-  'ODMH': 'https://www.odmh.nl/themas/bodem/bodemkwaliteitskaart/',
-  'OZHZ': 'https://www.ozhz.nl/themas/bodem/pfas/',
-  'OZHZ (Omgevingsdienst Zuid-Holland Zuid)': 'https://www.ozhz.nl/themas/bodem/pfas/',
-  'Omgevingsdienst Zuid-Holland Zuid': 'https://www.ozhz.nl/themas/bodem/pfas/',
-  'Omgevingsdienst Haaglanden': 'https://www.odh.nl/themas/bodem',
-  'ODH': 'https://www.odh.nl/themas/bodem',
-  'ODWH': 'https://www.odwh.nl/themas/bodem',
-  // Noord-Holland
-  'ODNZKG': 'https://odnzkg.nl/themas/bodem/pfas/',
-  'Omgevingsdienst Noordzeekanaalgebied': 'https://odnzkg.nl/themas/bodem/pfas/',
-  'OD NZKG': 'https://odnzkg.nl/themas/bodem/pfas/',
-  'Omgevingsdienst IJmond': 'https://www.odijmond.nl/themas/bodem',
-  'ODIJ': 'https://www.odijmond.nl/themas/bodem',
-  // Utrecht
-  'ODRU': 'https://www.odru.nl/themas/bodem',
-  'Omgevingsdienst Utrecht': 'https://www.odru.nl/themas/bodem',
-  'Omgevingsdienst Utrecht (ODU)': 'https://www.odru.nl/themas/bodem',
-  'Omgevingsdienst Utrecht (voorheen Omgevingsdienst Regio Utrecht - ODRU)': 'https://www.odru.nl/themas/bodem',
-  'RUD Utrecht': 'https://www.odru.nl/themas/bodem',
-  // Noord-Brabant
-  'ODBN': 'https://www.odbn.nl/bodem-en-water/pfas',
-  'Omgevingsdienst Brabant Noord': 'https://www.odbn.nl/bodem-en-water/pfas',
-  'ODZOB': 'https://www.odzob.nl/themas/bodem',
-  'Omgevingsdienst Brabant Zuidoost': 'https://www.odzob.nl/themas/bodem',
-  'OMWB': 'https://www.omwb.nl/themas/bodem/pfas',
-  'Omgevingsdienst Midden- en West-Brabant': 'https://www.omwb.nl/themas/bodem/pfas',
-  // Gelderland
-  'ODRN': 'https://www.odrn.nl/themas/bodem',
-  'Omgevingsdienst Regio Nijmegen': 'https://www.odrn.nl/themas/bodem',
-  'Omgevingsdienst Rivierenland': 'https://www.odrivierenland.nl/themas/bodem',
-  'ODA': 'https://www.omgevingsdienstachterhoek.nl/themas/bodem',
-  'Omgevingsdienst Achterhoek': 'https://www.omgevingsdienstachterhoek.nl/themas/bodem',
-  'Omgevingsdienst Veluwe IJssel': 'https://www.odvij.nl/themas/bodem',
-  // Overijssel
-  'Omgevingsdienst IJsselland': 'https://www.odijsselland.nl/themas/bodem',
-  'OT': 'https://www.omgevingsdiensttwente.nl/themas/bodem',
-  'Omgevingsdienst Twente': 'https://www.omgevingsdiensttwente.nl/themas/bodem',
-  // Friesland
-  'FUMO': 'https://www.fumo.nl/themas/bodem',
-  'Omgevingsdienst Fryske Utfieringstsjinst Miljeu en Omjouwing (FUMO)': 'https://www.fumo.nl/themas/bodem',
-  'Fryske Utfieringstsjinst Miljeu en Omjouwing': 'https://www.fumo.nl/themas/bodem',
-  // Groningen
-  'Omgevingsdienst Groningen': 'https://www.omgevingsdienst.nl/themas/bodem',
-  'ODG': 'https://www.omgevingsdienst.nl/themas/bodem',
-  // Drenthe
-  'RUD Drenthe': 'https://www.rudrenthe.nl/themas/bodem',
-  'Omgevingsdienst Drenthe': 'https://www.rudrenthe.nl/themas/bodem',
-  'Milieu Adviesbureau Drenthe': 'https://www.rudrenthe.nl/themas/bodem',
-  // Flevoland
-  'OFGV': 'https://www.ofgv.nl/themas/bodem',
-  'Omgevingsdienst Flevoland & Gooi en Vechtstreek': 'https://www.ofgv.nl/themas/bodem',
-  // Limburg
-  'RUD Zuid-Limburg': 'https://www.rudzl.nl/themas/bodem',
-  'Omgevingsdienst Noord- en Midden-Limburg': 'https://www.odnl.nl/themas/bodem',
-  'ODNL': 'https://www.odnl.nl/themas/bodem',
-  // Zeeland
-  'RUD Zeeland': 'https://www.rudzeeland.nl/themas/bodem',
-};
+// OD_LINK_MAP is hier verwijderd: die tabel werd nergens gebruikt en bevatte
+// dezelfde ongeverifieerde URL's als gemeente_mapping.json (o.a. rudrenthe.nl
+// terwijl het domein oddrenthe.nl is). Dode code met foute data leidt de
+// volgende lezer alleen maar om de tuin. gemeente_mapping.json is de enige
+// bron voor bronlinks.
 
 const gemeenteMapping = require('./gemeente_mapping.json');
 

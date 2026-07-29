@@ -169,11 +169,31 @@ node check-links.js --kapot      # alleen de kapotte
 node check-links.js --json > rapport.json
 ```
 
-Dit is nodig omdat de links deels gegokt zijn: 152 van de 349 deelden exact het
-pad `/themas/bodem` en 103 waren alleen een homepage. De prompt in
+Dit was nodig omdat de links deels gegokt waren: 152 van de 349 deelden exact
+het pad `/themas/bodem` en 103 waren alleen een homepage. De prompt in
 `findRealLinks` droeg de AI letterlijk op om bij twijfel de homepage van de
 meest waarschijnlijke omgevingsdienst te geven. Een link die 404 geeft is voor
 een gebruiker erger dan geen link.
+
+Alle 24 omgevingsdienst-domeinen zijn nagelopen; 316 van de 340 gemeenten
+kregen een andere bronlink. Drie daarvan waren geen verkeerd pad maar een
+verkeerde organisatie:
+
+| Was | Is | Waarom |
+| --- | --- | --- |
+| `www.odrn.nl` | `www.odgroenemetropool.nl` | ODRN en OD Regio Arnhem zijn per 1-1-2026 gefuseerd tot Omgevingsdienst Groene Metropool |
+| `www.omgevingsdienst.nl` | `www.od-groningen.nl` | `omgevingsdienst.nl` is de landelijke koepel Omgevingsdienst NL, niet OD Groningen |
+| `www.rudzeeland.nl` | `rud-zeeland.nl` | het domein heeft een koppelteken |
+
+Verder: `omgevingsdienstachterhoek.nl` → `odachterhoek.nl` en `odh.nl` →
+`omgevingsdiensthaaglanden.nl`.
+
+> **Belangrijke kanttekening bij de verificatie.** De links zijn gecontroleerd
+> tegen een zoekindex, niet door ze op te halen — de omgeving waarin dit werk is
+> gedaan had geen uitgaand netwerk naar die domeinen. Dat een URL in de index
+> staat is sterk bewijs dat de pagina bestaat, maar geen bevestigde HTTP 200.
+> Draai `node check-links.js` een keer vanaf een machine met normale
+> netwerktoegang om dit hard te maken.
 
 ### Herindelingen
 
