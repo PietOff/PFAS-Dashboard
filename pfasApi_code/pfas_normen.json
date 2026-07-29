@@ -1,0 +1,106 @@
+{
+  "landelijk_kader": {
+    "pfos": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 1.4 },
+    "pfoa": { "wonen": 7.0, "industrie": 7.0, "landbouwNatuur": 1.9 },
+    "genx": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 0.8 },
+    "opmerkingen": "Volgt het landelijke Tijdelijk Handelingskader PFAS (december 2023)."
+  },
+  "afwijkend": {
+    "Rotterdam": {
+      "pfos": { "wonen": 3.0, "industrie": 7.0, "landbouwNatuur": 1.6 },
+      "pfoa": { "wonen": 7.0, "industrie": 7.0, "landbouwNatuur": 1.9 },
+      "genx": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 0.8 },
+      "omgevingsdienst": "DCMR Milieudienst Rijnmond",
+      "opmerkingen": "Rotterdam heeft eigen Lokale Maximale Waarden (LMW). PFOS Industrie is 7.0 µg/kg (landelijk: 3.0). PFOS Landbouw/Natuur is 1.6 µg/kg (landelijk: 1.4). Geldt alleen voor grond afkomstig uit Rotterdam.",
+      "bronLink": "https://www.rotterdam.nl/pfas"
+    },
+    "Nieuwegein": {
+      "pfos": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 1.4 },
+      "pfoa": { "wonen": 7.0, "industrie": 7.0, "landbouwNatuur": 3.8 },
+      "genx": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 0.8 },
+      "omgevingsdienst": "ODRU",
+      "opmerkingen": "Nieuwegein heeft een verhoogde PFOA achtergrondwaarde voor Landbouw/Natuur van 3.8 µg/kg (landelijk: 1.9) door historische PFOA-depositie van Chemours. Geldt alleen voor grond afkomstig uit Nieuwegein (Bodemkwaliteitskaart 2024).",
+      "bronLink": "https://www.nieuwegein.nl"
+    },
+    "Helmond": {
+      "pfos": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 1.2 },
+      "pfoa": { "wonen": 7.0, "industrie": 7.0, "landbouwNatuur": 3.0 },
+      "genx": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 0.4 },
+      "omgevingsdienst": "ODZOB",
+      "opmerkingen": "Helmond heeft een zone-gebaseerd systeem (Beleidsregel PFAS Helmond 2023) vanwege historische verontreiniging door Custom Powders. PFOA Landbouw/Natuur varieert van 1.48 tot 5.12 µg/kg per zone. GenX is strenger dan landelijk (0.10-0.41 µg/kg). Getoonde waarden zijn representatieve middenwaarden.",
+      "bronLink": "https://www.helmond.nl/PFAS"
+    },
+    "Dordrecht": {
+      "pfos": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 1.4 },
+      "pfoa": { "wonen": 7.0, "industrie": 7.0, "landbouwNatuur": 2.3 },
+      "genx": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 0.8 },
+      "omgevingsdienst": "OZHZ",
+      "opmerkingen": "Dordrecht (Zone B, nabij Chemours) heeft een verhoogde PFOA Landbouw/Natuur norm van 2.3 µg/kg (landelijk: 1.9). Daarnaast bestaat er een apart maatwerk-regime met hogere waarden onder strikte voorwaarden (perceelsmatching). Beleidsregel hergebruik PFOA 2025.",
+      "bronLink": "https://www.ozhz.nl/onderwerpen/bodem/"
+    },
+    "Sliedrecht": {
+      "pfos": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 1.4 },
+      "pfoa": { "wonen": 7.0, "industrie": 7.0, "landbouwNatuur": 2.3 },
+      "genx": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 0.8 },
+      "omgevingsdienst": "OZHZ",
+      "opmerkingen": "Sliedrecht valt onder OZHZ Zone B (nabij Chemours). PFOA Landbouw/Natuur is 2.3 µg/kg (landelijk: 1.9).",
+      "bronLink": "https://www.ozhz.nl/onderwerpen/bodem/"
+    },
+    "Papendrecht": {
+      "pfos": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 1.4 },
+      "pfoa": { "wonen": 7.0, "industrie": 7.0, "landbouwNatuur": 2.3 },
+      "genx": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 0.8 },
+      "omgevingsdienst": "OZHZ",
+      "opmerkingen": "Papendrecht valt onder OZHZ Zone B (nabij Chemours). PFOA Landbouw/Natuur is 2.3 µg/kg (landelijk: 1.9).",
+      "bronLink": "https://www.ozhz.nl/onderwerpen/bodem/"
+    },
+    "Molenlanden": {
+      "pfos": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 1.4 },
+      "pfoa": { "wonen": 7.0, "industrie": 7.0, "landbouwNatuur": 2.3 },
+      "genx": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 0.8 },
+      "omgevingsdienst": "OZHZ",
+      "opmerkingen": "Molenlanden valt deels onder OZHZ Zone B. PFOA Landbouw/Natuur is 2.3 µg/kg (landelijk: 1.9).",
+      "bronLink": "https://www.ozhz.nl/onderwerpen/bodem/"
+    },
+    "Alblasserdam": {
+      "pfos": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 1.4 },
+      "pfoa": { "wonen": 7.0, "industrie": 7.0, "landbouwNatuur": 2.3 },
+      "genx": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 0.8 },
+      "omgevingsdienst": "OZHZ",
+      "opmerkingen": "Alblasserdam valt onder OZHZ Zone B. PFOA Landbouw/Natuur is 2.3 µg/kg (landelijk: 1.9).",
+      "bronLink": "https://www.ozhz.nl/onderwerpen/bodem/"
+    },
+    "Hardinxveld-Giessendam": {
+      "pfos": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 1.4 },
+      "pfoa": { "wonen": 7.0, "industrie": 7.0, "landbouwNatuur": 2.3 },
+      "genx": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 0.8 },
+      "omgevingsdienst": "OZHZ",
+      "opmerkingen": "Hardinxveld-Giessendam valt onder OZHZ Zone B. PFOA Landbouw/Natuur is 2.3 µg/kg (landelijk: 1.9).",
+      "bronLink": "https://www.ozhz.nl/onderwerpen/bodem/"
+    },
+    "Gorinchem": {
+      "pfos": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 1.4 },
+      "pfoa": { "wonen": 7.0, "industrie": 7.0, "landbouwNatuur": 2.3 },
+      "genx": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 0.8 },
+      "omgevingsdienst": "OZHZ",
+      "opmerkingen": "Gorinchem valt onder OZHZ Zone B. PFOA Landbouw/Natuur is 2.3 µg/kg (landelijk: 1.9).",
+      "bronLink": "https://www.ozhz.nl/onderwerpen/bodem/"
+    },
+    "Zwijndrecht": {
+      "pfos": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 1.4 },
+      "pfoa": { "wonen": 7.0, "industrie": 7.0, "landbouwNatuur": 2.3 },
+      "genx": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 0.8 },
+      "omgevingsdienst": "OZHZ",
+      "opmerkingen": "Zwijndrecht valt onder OZHZ Zone B (nabij Chemours). PFOA Landbouw/Natuur is 2.3 µg/kg (landelijk: 1.9).",
+      "bronLink": "https://www.ozhz.nl/onderwerpen/bodem/"
+    },
+    "Hendrik-Ido-Ambacht": {
+      "pfos": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 1.4 },
+      "pfoa": { "wonen": 7.0, "industrie": 7.0, "landbouwNatuur": 2.3 },
+      "genx": { "wonen": 3.0, "industrie": 3.0, "landbouwNatuur": 0.8 },
+      "omgevingsdienst": "OZHZ",
+      "opmerkingen": "Hendrik-Ido-Ambacht valt onder OZHZ Zone B. PFOA Landbouw/Natuur is 2.3 µg/kg (landelijk: 1.9).",
+      "bronLink": "https://www.ozhz.nl/onderwerpen/bodem/"
+    }
+  }
+}

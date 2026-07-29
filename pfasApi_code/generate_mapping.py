@@ -1,0 +1,112 @@
+import json
+
+# Master dictionary of ODs and their URLs from the Node script
+od_links = {
+    'DCMR': 'https://www.dcmr.nl/over-dcmr/thema-s/bodem/pfas.html',
+    'ODMH': 'https://www.odmh.nl/themas/bodem/bodemkwaliteitskaart/',
+    'OZHZ': 'https://www.ozhz.nl/themas/bodem/pfas/',
+    'ODWH': 'https://www.odwh.nl/themas/bodem',
+    'ODH': 'https://www.odh.nl/themas/bodem',
+    'ODNZKG': 'https://odnzkg.nl/themas/bodem/pfas/',
+    'ODIJ': 'https://www.odijmond.nl/themas/bodem',
+    'ODRU': 'https://www.odru.nl/themas/bodem',
+    'ODBN': 'https://www.odbn.nl/bodem-en-water/pfas',
+    'ODZOB': 'https://www.odzob.nl/themas/bodem',
+    'OMWB': 'https://www.omwb.nl/themas/bodem/pfas',
+    'ODRN': 'https://www.odrn.nl/themas/bodem',
+    'Omgevingsdienst Rivierenland': 'https://www.odrivierenland.nl/themas/bodem',
+    'ODA': 'https://www.omgevingsdienstachterhoek.nl/themas/bodem',
+    'Omgevingsdienst Veluwe IJssel': 'https://www.odvij.nl/themas/bodem',
+    'Omgevingsdienst IJsselland': 'https://www.odijsselland.nl/themas/bodem',
+    'OT': 'https://www.omgevingsdiensttwente.nl/themas/bodem',
+    'FUMO': 'https://www.fumo.nl/themas/bodem',
+    'ODG': 'https://www.omgevingsdienst.nl/themas/bodem',
+    'RUD Drenthe': 'https://www.rudrenthe.nl/themas/bodem',
+    'OFGV': 'https://www.ofgv.nl/themas/bodem',
+    'RUD Zuid-Limburg': 'https://www.rudzl.nl/themas/bodem',
+    'ODNL': 'https://www.odnl.nl/themas/bodem',
+    'RUD Zeeland': 'https://www.rudzeeland.nl/themas/bodem'
+}
+
+gemeente_to_od = {
+    "Aa en Hunze": "RUD Drenthe", "Aalburg": "OMWB", "Aalsmeer": "ODNZKG", "Aalten": "ODA", "Achtkarspelen": "FUMO",
+    "Alblasserdam": "OZHZ", "Albrandswaard": "DCMR", "Alkmaar": "ODNZKG", "Almelo": "OT", "Almere": "OFGV", "Alphen aan den Rijn": "ODMH",
+    "Alphen-Chaam": "OMWB", "Altena": "OMWB", "Ameland": "FUMO", "Amersfoort": "ODRU", "Amstelveen": "ODNZKG", "Amsterdam": "ODNZKG",
+    "Apeldoorn": "Omgevingsdienst Veluwe IJssel", "Arnhem": "ODRN", "Assen": "RUD Drenthe", "Asten": "ODZOB", "Baarle-Nassau": "OMWB",
+    "Baarn": "ODRU", "Barendrecht": "DCMR", "Barneveld": "Omgevingsdienst Veluwe IJssel", "Beek": "RUD Zuid-Limburg", "Beekdaelen": "RUD Zuid-Limburg",
+    "Beemster": "ODNZKG", "Beesel": "ODNL", "Berg en Dal": "ODRN", "Bergeijk": "ODZOB", "Bergen (L.)": "ODNL", "Bergen (NH.)": "ODNZKG",
+    "Bergen op Zoom": "OMWB", "Berkelland": "ODA", "Bernheze": "ODBN", "Best": "ODZOB", "Beuningen": "ODRN", "Beverwijk": "ODIJ",
+    "Bladel": "ODZOB", "Blaricum": "OFGV", "Bloemendaal": "ODIJ", "Boekel": "ODBN", "Borger-Odoorn": "RUD Drenthe", "Borne": "OT",
+    "Borsele": "RUD Zeeland", "Boxmeer": "ODBN", "Boxtel": "ODBN", "Breda": "OMWB", "Bronckhorst": "ODA", "Brummen": "Omgevingsdienst Veluwe IJssel",
+    "Brunssum": "RUD Zuid-Limburg", "Bunnik": "ODRU", "Bunschoten": "ODRU", "Buren": "Omgevingsdienst Rivierenland", "Capelle aan den IJssel": "DCMR",
+    "Castricum": "ODNZKG", "Coevorden": "RUD Drenthe", "Cranendonck": "ODZOB", "Cuijk": "ODBN", "Culemborg": "Omgevingsdienst Rivierenland",
+    "Dalfsen": "Omgevingsdienst IJsselland", "Dantumadiel": "FUMO", "De Bilt": "ODRU", "De Fryske Marren": "FUMO", "De Ronde Venen": "ODRU",
+    "De Wolden": "RUD Drenthe", "Delft": "ODH", "Den Haag": "ODH", "Den Helder": "ODNZKG", "Deurne": "ODZOB", "Deventer": "Omgevingsdienst IJsselland",
+    "Diemen": "ODNZKG", "Dijk en Waard": "ODNZKG", "Dinkelland": "OT", "Doesburg": "ODRN", "Doetinchem": "ODA", "Dongen": "OMWB",
+    "Dordrecht": "OZHZ", "Drechterland": "ODNZKG", "Drimmelen": "OMWB", "Dronten": "OFGV", "Druten": "ODRN", "Duiven": "ODRN",
+    "Echt-Susteren": "ODNL", "Edam-Volendam": "ODNZKG", "Ede": "Omgevingsdienst Veluwe IJssel", "Eemnes": "ODRU", "Eemsdelta": "ODG", "Eersel": "ODZOB",
+    "Eijsden-Margraten": "RUD Zuid-Limburg", "Eindhoven": "ODZOB", "Elburg": "Omgevingsdienst Veluwe IJssel", "Emmen": "RUD Drenthe",
+    "Enkhuizen": "ODNZKG", "Enschede": "OT", "Epe": "Omgevingsdienst Veluwe IJssel", "Ermelo": "Omgevingsdienst Veluwe IJssel", "Etten-Leur": "OMWB",
+    "Geertruidenberg": "OMWB", "Geldrop-Mierlo": "ODZOB", "Gemert-Bakel": "ODZOB", "Gennep": "ODNL", "Gilze en Rijen": "OMWB", "Goeree-Overflakkee": "DCMR",
+    "Goes": "RUD Zeeland", "Goirle": "OMWB", "Gooise Meren": "OFGV", "Gorinchem": "OZHZ", "Gouda": "ODMH", "Grave": "ODBN",
+    "Groningen": "ODG", "Gulpen-Wittem": "RUD Zuid-Limburg", "Haaksbergen": "OT", "Haarlem": "ODIJ", "Haarlemmermeer": "ODNZKG", "Halderberge": "OMWB",
+    "Hardenberg": "Omgevingsdienst IJsselland", "Harderwijk": "Omgevingsdienst Veluwe IJssel", "Hardinxveld-Giessendam": "OZHZ", "Harlingen": "FUMO",
+    "Hattem": "Omgevingsdienst Veluwe IJssel", "Heemskerk": "ODIJ", "Heemstede": "ODIJ", "Heerde": "Omgevingsdienst Veluwe IJssel", "Heerenveen": "FUMO",
+    "Heerlen": "RUD Zuid-Limburg", "Heeze-Leende": "ODZOB", "Heiloo": "ODNZKG", "Hellendoorn": "OT", "Helmond": "ODZOB", "Hendrik-Ido-Ambacht": "OZHZ",
+    "Hengelo": "OT", "Het Hogeland": "ODG", "Heumen": "ODRN", "Heusden": "ODBN", "Hillegom": "ODWH", "Hilvarenbeek": "OMWB", "Hilversum": "OFGV",
+    "Hoeksche Waard": "OZHZ", "Hof van Twente": "OT", "Hollands Kroon": "ODNZKG", "Hoogeveen": "RUD Drenthe", "Hoorn": "ODNZKG", "Houten": "ODRU",
+    "Huizen": "OFGV", "Hulst": "RUD Zeeland", "IJsselstein": "ODRU", "Kaag en Braassem": "ODMH", "Kampen": "Omgevingsdienst IJsselland",
+    "Kapelle": "RUD Zeeland", "Katwijk": "ODWH", "Kerkrade": "RUD Zuid-Limburg", "Koggenland": "ODNZKG", "Krimpen aan den IJssel": "DCMR",
+    "Krimpenerwaard": "ODMH", "Laarbeek": "ODZOB", "Landerd": "ODBN", "Landgraaf": "RUD Zuid-Limburg", "Landsmeer": "ODNZKG", "Lansingerland": "DCMR",
+    "Laren": "OFGV", "Leeuwarden": "FUMO", "Leiden": "ODWH", "Leiderdorp": "ODWH", "Leidschendam-Voorburg": "ODH", "Lelystad": "OFGV",
+    "Leudal": "ODNL", "Leusden": "ODRU", "Lingewaard": "ODRN", "Lisse": "ODWH", "Lochem": "ODA", "Loon op Zand": "OMWB", "Lopik": "ODRU",
+    "Losser": "OT", "Maasdriel": "Omgevingsdienst Rivierenland", "Maasgouw": "ODNL", "Maassluis": "DCMR", "Maastricht": "RUD Zuid-Limburg",
+    "Medemblik": "ODNZKG", "Meerssen": "RUD Zuid-Limburg", "Meierijstad": "ODBN", "Meppel": "RUD Drenthe", "Middelburg": "RUD Zeeland",
+    "Midden-Delfland": "DCMR", "Midden-Drenthe": "RUD Drenthe", "Midden-Groningen": "ODG", "Mill en Sint Hubert": "ODBN", "Moerdijk": "OMWB",
+    "Molenlanden": "OZHZ", "Montferland": "ODA", "Montfoort": "ODRU", "Mook en Middelaar": "ODNL", "Neder-Betuwe": "Omgevingsdienst Rivierenland",
+    "Nederweert": "ODNL", "Nieuwegein": "ODRU", "Nieuwkoop": "ODMH", "Nijkerk": "ODRU", "Nijmegen": "ODRN", "Nissewaard": "DCMR",
+    "Noardeast-Fryslân": "FUMO", "Noord-Beveland": "RUD Zeeland", "Noordenveld": "RUD Drenthe", "Noordoostpolder": "OFGV", "Noordwijk": "ODWH",
+    "Nuenen, Gerwen en Nederwetten": "ODZOB", "Nunspeet": "Omgevingsdienst Veluwe IJssel", "Oegstgeest": "ODWH", "Oirschot": "ODZOB",
+    "Oisterwijk": "OMWB", "Oldambt": "ODG", "Oldebroek": "Omgevingsdienst Veluwe IJssel", "Oldenzaal": "OT", "Olst-Wijhe": "Omgevingsdienst IJsselland",
+    "Ommen": "Omgevingsdienst IJsselland", "Oost Gelre": "ODA", "Oosterhout": "OMWB", "Ooststellingwerf": "FUMO", "Oostzaan": "ODNZKG",
+    "Opmeer": "ODNZKG", "Opsterland": "FUMO", "Oss": "ODBN", "Oude IJsselstreek": "ODA", "Ouder-Amstel": "ODNZKG", "Oudewater": "ODRU",
+    "Overbetuwe": "ODRN", "Papendrecht": "OZHZ", "Peel en Maas": "ODNL", "Pekela": "ODG", "Pijnacker-Nootdorp": "ODH", "Purmerend": "ODNZKG",
+    "Putten": "Omgevingsdienst Veluwe IJssel", "Raalte": "Omgevingsdienst IJsselland", "Reimerswaal": "RUD Zeeland", "Renkum": "ODRN",
+    "Renswoude": "ODRU", "Reusel-De Mierden": "ODZOB", "Rheden": "ODRN", "Rhenen": "ODRU", "Ridderkerk": "DCMR", "Rijssen-Holten": "OT",
+    "Rijswijk": "ODH", "Roerdalen": "ODNL", "Roermond": "ODNL", "Roosendaal": "OMWB", "Rotterdam": "DCMR", "Rozendaal": "ODRN", "Rucphen": "OMWB",
+    "Schagen": "ODNZKG", "Scherpenzeel": "Omgevingsdienst Veluwe IJssel", "Schiedam": "DCMR", "Schiermonnikoog": "FUMO", "Schouwen-Duiveland": "RUD Zeeland",
+    "Simpelveld": "RUD Zuid-Limburg", "Sint Anthonis": "ODBN", "Sint-Michielsgestel": "ODBN", "Sittard-Geleen": "RUD Zuid-Limburg", "Sliedrecht": "OZHZ",
+    "Sluis": "RUD Zeeland", "Smallingerland": "FUMO", "Soest": "ODRU", "Someren": "ODZOB", "Son en Breugel": "ODZOB", "Stadskanaal": "ODG",
+    "Staphorst": "Omgevingsdienst IJsselland", "Stede Broec": "ODNZKG", "Steenbergen": "OMWB", "Steenwijkerland": "Omgevingsdienst IJsselland",
+    "Stein": "RUD Zuid-Limburg", "Stichtse Vecht": "ODRU", "Súdwest-Fryslân": "FUMO", "Terneuzen": "RUD Zeeland", "Terschelling": "FUMO",
+    "Texel": "ODNZKG", "Teylingen": "ODWH", "Tholen": "RUD Zeeland", "Tiel": "Omgevingsdienst Rivierenland", "Tilburg": "OMWB", "Tubbergen": "OT",
+    "Twenterand": "OT", "Tynaarlo": "RUD Drenthe", "Tytsjerksteradiel": "FUMO", "Uden": "ODBN", "Uitgeest": "ODNZKG", "Uithoorn": "ODNZKG",
+    "Urk": "OFGV", "Utrecht": "ODRU", "Utrechtse Heuvelrug": "ODRU", "Vaals": "RUD Zuid-Limburg", "Valkenburg aan de Geul": "RUD Zuid-Limburg",
+    "Valkenswaard": "ODZOB", "Veendam": "ODG", "Veenendaal": "ODRU", "Veere": "RUD Zeeland", "Veldhoven": "ODZOB", "Velsen": "ODIJ",
+    "Venlo": "ODNL", "Venray": "ODNL", "Vijfheerenlanden": "ODRU", "Vlaardingen": "DCMR", "Vlieland": "FUMO", "Vlissingen": "RUD Zeeland",
+    "Voerendaal": "RUD Zuid-Limburg", "Voorne aan Zee": "DCMR", "Voorschoten": "ODWH", "Voorst": "Omgevingsdienst Veluwe IJssel", "Vught": "ODBN",
+    "Waadhoeke": "FUMO", "Waalre": "ODZOB", "Waalwijk": "OMWB", "Waddinxveen": "ODMH", "Wageningen": "ODRN", "Wassenaar": "ODH", "Waterland": "ODNZKG",
+    "Weert": "ODNL", "West Betuwe": "Omgevingsdienst Rivierenland", "West Maas en Waal": "ODRN", "Westerkwartier": "ODG", "Westerveld": "RUD Drenthe",
+    "Westervoort": "ODRN", "Westerwolde": "ODG", "Westland": "ODH", "Weststellingwerf": "FUMO", "Wierden": "OT", "Wijchen": "ODRN", "Wijdemeren": "OFGV",
+    "Wijk bij Duurstede": "ODRU", "Winterswijk": "ODA", "Woensdrecht": "OMWB", "Woerden": "ODRU", "Wormerland": "ODNZKG", "Woudenberg": "ODRU",
+    "Zaanstad": "ODNZKG", "Zaltbommel": "Omgevingsdienst Rivierenland", "Zandvoort": "ODIJ", "Zeewolde": "OFGV", "Zeist": "ODRU", "Zevenaar": "ODRN",
+    "Zoetermeer": "ODH", "Zoeterwoude": "ODWH", "Zuidplas": "ODMH", "Zundert": "OMWB", "Zutphen": "Omgevingsdienst Veluwe IJssel",
+    "Zwartewaterland": "Omgevingsdienst IJsselland", "Zwijndrecht": "OZHZ", "Zwolle": "Omgevingsdienst IJsselland",
+    
+    # Missing from above list but exist
+    "Land van Cuijk": "ODBN",
+    "Maashorst": "ODBN",
+    "Voorne aan Zee": "DCMR",
+    "Dijk en Waard": "ODNZKG",
+    "Eemsdelta": "ODG",
+}
+
+# Generate mapping
+gemeente_to_url = {}
+for gemeente, od in gemeente_to_od.items():
+    gemeente_to_url[gemeente] = od_links[od]
+
+with open('gemeente_mapping.json', 'w') as f:
+    json.dump(gemeente_to_url, f, indent=2)
+
+print(f"Generated mapping for {len(gemeente_to_url)} gemeenten.")
