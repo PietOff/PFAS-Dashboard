@@ -33,8 +33,25 @@ const SRU_CONNECTION = 'oep';
 // Maximaal aantal records per pagina dat we opvragen.
 const PAGINA_GROOTTE = 100;
 
-const PFAS_TERMEN = ['PFAS', 'PFOS', 'PFOA', 'GenX', 'perfluoralkylstoffen', 'polyfluoralkylstoffen'];
-const BODEM_TERMEN = ['bodemkwaliteitskaart', 'nota bodembeheer', 'bodembeheer', 'bodembeleid', 'achtergrondwaarde'];
+const PFAS_TERMEN = [
+  'PFAS', 'PFOS', 'PFOA', 'GenX', 'FRD-903',
+  'perfluoralkylstoffen', 'polyfluoralkylstoffen', 'perfluoroctaanzuur', 'perfluoroctaansulfonaat'
+];
+
+// Ruim genomen: liever een paar irrelevante documenten analyseren dan een
+// gemeente met afwijkend beleid missen.
+const BODEM_TERMEN = [
+  'bodemkwaliteitskaart', 'nota bodembeheer', 'bodembeheer', 'bodembeleid',
+  'achtergrondwaarde', 'toepassingswaarde', 'grondverzet', 'bodemfunctieklassenkaart',
+  'milieuverklaring bodemkwaliteit', 'hergebruik van grond', 'baggerspecie',
+  'lokale maximale waarde', 'bodemkwaliteitszone'
+];
+
+// Omgevingsdiensten zijn gemeenschappelijke regelingen en publiceren hun
+// bodembeleid in het Blad gemeenschappelijke regeling — niet in een
+// Gemeenteblad. Door alleen op Gemeenteblad te filteren bleef juist de
+// organisatie die het beleid maakt buiten beeld.
+const PUBLICATIEBLADEN = ['Gemeenteblad', 'Provinciaal blad', 'Blad gemeenschappelijke regeling'];
 
 /**
  * Bouwt een CQL-query voor de SRU API.
@@ -50,7 +67,7 @@ function bouwCqlQuery({ vanaf, tot } = {}) {
 
   const delen = [
     'c.product-area=="officielepublicaties"',
-    '(w.publicatienaam=="Gemeenteblad" or w.publicatienaam=="Provinciaal blad")',
+    '(' + PUBLICATIEBLADEN.map(b => `w.publicatienaam=="${b}"`).join(' or ') + ')',
     of('cql.textAndIndexes', PFAS_TERMEN),
     of('cql.textAndIndexes', BODEM_TERMEN)
   ];
@@ -181,13 +198,69 @@ async function haalDocumentTekst(docUrl) {
     text = text.replace(/<[^>]+>/g, ' ');
     text = text.replace(/\s+/g, ' ').trim();
     
-    // Limiteer tot 8000 tekens voor de AI (genoeg om waarden te vinden)
-    return text.substring(0, 8000);
-    
+    return text;
+
   } catch (err) {
     console.error(`Kon document niet ophalen: ${docUrl}:`, err.message);
     return null;
   }
+}
+
+
+/**
+ * Kiest de stukken tekst waar de PFAS-normen waarschijnlijk staan.
+ *
+ * De oude code nam simpelweg de eerste 8000 tekens. In een nota bodembeheer
+ * staat de normentabel vrijwel nooit in de inleiding maar tientallen pagina's
+ * verderop, dus juist de afwijkende waarden vielen structureel buiten beeld.
+ *
+ * Deze functie zoekt alle plekken waar een PFAS-term of een eenheid staat en
+ * neemt daar een venster omheen. Alleen als er niets gevonden wordt, valt hij
+ * terug op het begin van het document.
+ */
+function selecteerRelevanteTekst(text, maxLengte = 24000) {
+  if (!text) return null;
+  if (text.length <= maxLengte) return text;
+
+  const trefwoorden = [
+    ...PFAS_TERMEN,
+    'µg/kg', 'ug/kg', 'μg/kg', 'microgram', 'ng/kg',
+    'toepassingswaarde', 'achtergrondwaarde', 'lokale maximale waarde',
+    'wonen', 'industrie', 'landbouw', 'natuur'
+  ];
+
+  const VENSTER = 1500;
+  const vensters = [];
+
+  for (const woord of trefwoorden) {
+    let vanaf = 0;
+    const lower = text.toLowerCase();
+    const doel = woord.toLowerCase();
+    while (vensters.length < 200) {
+      const i = lower.indexOf(doel, vanaf);
+      if (i === -1) break;
+      vensters.push([Math.max(0, i - VENSTER / 2), Math.min(text.length, i + VENSTER / 2)]);
+      vanaf = i + doel.length;
+    }
+  }
+
+  if (vensters.length === 0) return text.substring(0, maxLengte);
+
+  // Overlappende vensters samenvoegen zodat tabellen niet in stukken vallen
+  vensters.sort((a, b) => a[0] - b[0]);
+  const samengevoegd = [vensters[0]];
+  for (const [start, eind] of vensters.slice(1)) {
+    const laatste = samengevoegd[samengevoegd.length - 1];
+    if (start <= laatste[1]) laatste[1] = Math.max(laatste[1], eind);
+    else samengevoegd.push([start, eind]);
+  }
+
+  let uit = '';
+  for (const [start, eind] of samengevoegd) {
+    if (uit.length >= maxLengte) break;
+    uit += (uit ? '\n[...]\n' : '') + text.substring(start, eind);
+  }
+  return uit.substring(0, maxLengte);
 }
 
 
@@ -234,12 +307,22 @@ Antwoord UITSLUITEND met een geldig JSON object:
   "zekerheid": "hoog" of "laag"
 }
 
+LET OP: de tekst kan bestaan uit losse fragmenten uit een langer document,
+gescheiden door [...]. Beoordeel elk fragment; de normentabel staat vaak niet
+aan het begin.
+
 REGELS:
 1. Alle waarden moeten in µg/kg d.s. zijn. Als je ng/kg ziet, deel door 1000.
-2. Waarden boven 50 µg/kg zijn ALTIJD fout. Zet zekerheid op "laag".
-3. Als je geen concrete getallen vindt, zet heeftAfwijkendeWaarden op false.
-4. Wees STRIKT: alleen als er duidelijke, andere getallen staan dan het landelijk kader.
-5. Als het document alleen verwijst naar het landelijk kader zonder eigen waarden: false.
+2. Rapporteer ELKE afwijkende waarde die je vindt, ook als je maar één klasse
+   van één stof kunt vaststellen. Laat de rest null. Onvolledig is prima.
+3. Twijfel je over één specifiek getal? Laat dat getal weg, maar houd de andere
+   waarden die je wél zeker weet. Gooi niet de hele tabel weg.
+4. "zekerheid" gaat over de vraag of dit document echt eigen normen vaststelt:
+   - "hoog"  = het document stelt expliciet lokale/gebiedsspecifieke waarden vast
+   - "laag"  = je ziet getallen maar het is onduidelijk of ze hier gelden
+     (bijv. een voorbeeld, een verwijzing of een tabel zonder context)
+5. Als je geen concrete getallen vindt, zet heeftAfwijkendeWaarden op false.
+6. Verwijst het document alleen naar het landelijk kader zonder eigen waarden: false.
 `;
 
   const retries = 3;
@@ -278,29 +361,52 @@ REGELS:
 
 
 /**
- * Valideer of gevonden waarden redelijk zijn (geen hallucinaties)
+ * Zeeft implausibele waarden eruit, waarde voor waarde.
+ *
+ * De oude versie keurde de HELE set af zodra één getal niet klopte. Haalde de
+ * AI GenX ergens vandaan als 1200 µg/kg, dan verdwenen daarmee ook correct
+ * gelezen afwijkende PFOS- en PFOA-waarden uit hetzelfde besluit. Precies de
+ * afwijkingen die we willen vinden gingen zo verloren.
+ *
+ * @returns {{waarden: Object|null, verworpen: Array}}
+ */
+function filterPlausibeleWaarden(ruw) {
+  const verworpen = [];
+  if (!ruw) return { waarden: null, verworpen };
+
+  const schoon = {};
+  for (const stof of ['pfos', 'pfoa', 'genx']) {
+    if (!ruw[stof]) continue;
+    const perStof = {};
+
+    for (const klasse of ['wonen', 'industrie', 'landbouwNatuur']) {
+      const val = ruw[stof][klasse];
+      if (val === null || val === undefined) continue;
+
+      if (typeof val !== 'number' || !Number.isFinite(val)) {
+        verworpen.push({ stof, klasse, waarde: val, reden: 'geen getal' });
+      } else if (val <= 0) {
+        verworpen.push({ stof, klasse, waarde: val, reden: 'nul of negatief' });
+      } else if (val > 50) {
+        // Vrijwel altijd een eenheidsverwarring (ng/kg) of een andere stof.
+        verworpen.push({ stof, klasse, waarde: val, reden: 'boven 50 µg/kg' });
+      } else {
+        perStof[klasse] = val;
+      }
+    }
+
+    if (Object.keys(perStof).length > 0) schoon[stof] = perStof;
+  }
+
+  return { waarden: Object.keys(schoon).length > 0 ? schoon : null, verworpen };
+}
+
+/**
+ * Achterwaarts compatibel: zijn ALLE waarden plausibel?
  */
 function valideerWaarden(waarden) {
   if (!waarden) return false;
-  
-  const stoffen = ['pfos', 'pfoa', 'genx'];
-  const klassen = ['wonen', 'industrie', 'landbouwNatuur'];
-  
-  for (const stof of stoffen) {
-    if (!waarden[stof]) continue;
-    for (const klasse of klassen) {
-      const val = waarden[stof][klasse];
-      if (val !== null && val !== undefined) {
-        // Sanity checks:
-        if (typeof val !== 'number') return false;
-        if (val < 0) return false;       // Negatieve waarden zijn onmogelijk
-        if (val > 50) return false;       // Waarden boven 50 µg/kg zijn vermoedelijk fout
-        if (val === 0) return false;      // 0 is onwaarschijnlijk als norm
-      }
-    }
-  }
-  
-  return true;
+  return filterPlausibeleWaarden(waarden).verworpen.length === 0;
 }
 
 
@@ -562,14 +668,21 @@ async function verwerkPublicatie(db, pub, { forceer = false } = {}) {
   const gemeenteId = toDocId(pub.gemeente);
   if (!gemeenteId || !pub.url) return 'mislukt';
 
-  const tekst = await haalDocumentTekst(pub.url);
-  if (!tekst) return 'mislukt';
+  const ruweTekst = await haalDocumentTekst(pub.url);
+  if (!ruweTekst) return 'mislukt';
 
+  const tekst = selecteerRelevanteTekst(ruweTekst);
   const analyse = await extractWaardenUitDocument(pub.gemeente, tekst);
   if (!analyse) return 'mislukt';
 
-  const waardenValide = valideerWaarden(analyse.gevondenWaarden);
-  const wijktAf = wijktAfVanLandelijkKader(analyse.gevondenWaarden);
+  // Per waarde zeven in plaats van de hele set weggooien bij één fout getal.
+  const { waarden, verworpen } = filterPlausibeleWaarden(analyse.gevondenWaarden);
+  const wijktAf = wijktAfVanLandelijkKader(waarden);
+
+  // Een document telt als "wijkt af" zodra er ook maar één plausibele waarde in
+  // staat die van het landelijk kader verschilt. De zekerheid van de AI bepaalt
+  // daarna of dat direct in het dashboard mag of eerst langs een mens moet.
+  const afwijkend = Boolean(wijktAf && waarden);
 
   await docRef.set({
     identifier: pub.identifier,
@@ -579,12 +692,17 @@ async function verwerkPublicatie(db, pub, { forceer = false } = {}) {
     publicatieDatum: pub.date,
     url: pub.url,
     verwerktOp: new Date().toISOString(),
-    heeftAfwijkendeWaarden: Boolean(analyse.heeftAfwijkendeWaarden && wijktAf && waardenValide),
-    gevondenWaarden: analyse.gevondenWaarden || null,
+    heeftAfwijkendeWaarden: afwijkend,
+    gevondenWaarden: waarden,
+    ruweWaarden: analyse.gevondenWaarden || null,
+    verworpenWaarden: verworpen,
     toelichting: analyse.toelichting || null,
     aiZekerheid: analyse.zekerheid || null,
-    waardenValide,
-    wijktAf
+    waardenValide: verworpen.length === 0,
+    wijktAf,
+    // Bijlagen worden nog niet gelezen; zie tekortkomingen in de README.
+    heeftPdfBijlage: /\.pdf(["'?#]|$)/i.test(ruweTekst.slice(0, 200000)),
+    tekstLengte: ruweTekst.length
   }, { merge: true });
 
   return 'verwerkt';
@@ -606,15 +724,26 @@ async function verwerkPublicatie(db, pub, { forceer = false } = {}) {
 async function herbouwAfwijkingen(db) {
   const docs = await db.collection('pfasDocumenten').get();
 
-  // Nieuwste bruikbare document per gemeente wint
+  // Nieuwste afwijkende document per gemeente wint.
+  //
+  // Documenten met lage AI-zekerheid worden NIET weggegooid. Ze leveren geen
+  // getallen aan het dashboard, maar de gemeente komt wel op 'mogelijk-afwijkend'
+  // te staan met een verwijzing naar het besluit. Anders zou een gevonden
+  // afwijking stilletjes verdwijnen achter de mededeling "volgt landelijk kader",
+  // en dat is precies de fout die je hier niet wilt maken.
   const perGemeente = new Map();
   docs.forEach(d => {
     const data = d.data();
     if (!data.gemeenteId || !data.heeftAfwijkendeWaarden) return;
-    if (data.aiZekerheid !== 'hoog') return;
 
     const huidig = perGemeente.get(data.gemeenteId);
-    if (!huidig || String(data.publicatieDatum || '') > String(huidig.publicatieDatum || '')) {
+    if (!huidig) { perGemeente.set(data.gemeenteId, data); return; }
+
+    // Zeker gaat voor onzeker; daarna wint de nieuwste publicatie.
+    const zeker = (x) => x.aiZekerheid === 'hoog' ? 1 : 0;
+    if (zeker(data) > zeker(huidig) ||
+        (zeker(data) === zeker(huidig) &&
+         String(data.publicatieDatum || '') > String(huidig.publicatieDatum || ''))) {
       perGemeente.set(data.gemeenteId, data);
     }
   });
@@ -623,6 +752,7 @@ async function herbouwAfwijkingen(db) {
   const updates = [];
   let afwijkend = 0;
   let aanname = 0;
+  let teReviewen = 0;
 
   pfasData.forEach(doc => {
     const bestaand = doc.data();
@@ -630,7 +760,7 @@ async function herbouwAfwijkingen(db) {
 
     const bron = perGemeente.get(doc.id);
 
-    if (bron) {
+    if (bron && bron.aiZekerheid === 'hoog') {
       const update = {
         heeftAfwijkendBeleid: true,
         herkomst: 'officiele-bekendmaking',
@@ -641,6 +771,7 @@ async function herbouwAfwijkingen(db) {
         bronDocumentDatum: bron.publicatieDatum,
         opmerkingen: `Afwijkend beleid vastgesteld per ${bron.publicatieDatum}. Bron: ${bron.titel} (${bron.identifier}).`,
         confidenceScore: 100,
+        tereviewen: false,
         laatstGecontroleerd: new Date().toISOString().split('T')[0]
       };
       for (const stof of ['pfos', 'pfoa', 'genx']) {
@@ -649,6 +780,33 @@ async function herbouwAfwijkingen(db) {
       }
       updates.push({ ref: doc.ref, data: update });
       afwijkend++;
+
+    } else if (bron) {
+      // Wel een afwijking gevonden, maar de AI was er niet zeker van. Geen
+      // getallen overnemen — wel zichtbaar maken dat hier iets ligt.
+      updates.push({
+        ref: doc.ref,
+        data: {
+          heeftAfwijkendBeleid: false,
+          herkomst: 'mogelijk-afwijkend',
+          tereviewen: true,
+          bronLink: bron.url,
+          bronDocument: bron.identifier,
+          bronDocumentTitel: bron.titel,
+          bronDocumentDatum: bron.publicatieDatum,
+          mogelijkeWaarden: bron.gevondenWaarden || null,
+          opmerkingen: `Mogelijk afwijkend beleid gevonden in ${bron.titel} (${bron.identifier}), ` +
+            `nog niet geverifieerd. Het dashboard toont het landelijk kader; ` +
+            `raadpleeg het besluit en de omgevingsdienst voordat u hierop vertrouwt.`,
+          pfos: { ...LANDELIJK.pfos },
+          pfoa: { ...LANDELIJK.pfoa },
+          genx: { ...LANDELIJK.genx },
+          confidenceScore: 50,
+          laatstGecontroleerd: new Date().toISOString().split('T')[0]
+        }
+      });
+      teReviewen++;
+
     } else {
       // Geen officieel document gevonden. Dat is een AANNAME, geen vaststelling,
       // en moet als zodanig in het dashboard herkenbaar zijn.
@@ -657,6 +815,7 @@ async function herbouwAfwijkingen(db) {
         data: {
           heeftAfwijkendBeleid: false,
           herkomst: 'landelijk-kader-aanname',
+          tereviewen: false,
           pfos: { ...LANDELIJK.pfos },
           pfoa: { ...LANDELIJK.pfoa },
           genx: { ...LANDELIJK.genx },
@@ -674,7 +833,7 @@ async function herbouwAfwijkingen(db) {
     await batch.commit();
   }
 
-  return { afwijkend, aanname, documentenInCorpus: docs.size };
+  return { afwijkend, teReviewen, aanname, documentenInCorpus: docs.size };
 }
 
 /**
@@ -739,6 +898,8 @@ async function sweepBekendmakingen(db, { vanaf, forceer = false, maxDocumenten =
 
 module.exports = {
   checkOfficieleBekendmakingen,
+  filterPlausibeleWaarden,
+  selecteerRelevanteTekst,
   zoekRecenteBekendmakingen,
   zoekBekendmakingen,
   bouwCqlQuery,

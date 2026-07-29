@@ -184,21 +184,42 @@ tussen "de AI las een getal" en "dit getal komt in het dashboard":
 3. **Nooit null overschrijven.** Vult de AI maar één klasse in, dan blijven de
    andere staan op wat er al was of op het landelijk kader.
 
-Wat de sweep **niet** kan, en wat je moet weten voordat je hierop test:
+Om zo min mogelijk afwijkingen te missen:
 
-- Een gemeente kan afwijkend beleid hebben dat nooit als gemeenteblad met deze
+- **Het hele document wordt doorzocht,** niet alleen het begin. In een nota
+  bodembeheer staat de normentabel vaak tientallen pagina's ver; er worden
+  vensters geknipt rond elke PFAS-term en elke eenheid.
+- **Eén fout getal gooit de rest niet weg.** Waarden worden stuk voor stuk
+  gezeefd, zodat een hallucinatie bij GenX geen correct gelezen PFOS-afwijking
+  meesleept. Verworpen waarden blijven zichtbaar in `verworpenWaarden`.
+- **Ook het Blad gemeenschappelijke regeling wordt doorzocht.** Omgevingsdiensten
+  zijn gemeenschappelijke regelingen en publiceren daar; door alleen op
+  Gemeenteblad te filteren bleef juist de partij die het beleid maakt buiten beeld.
+- **Ruime zoektermen.** Liever een paar irrelevante documenten analyseren dan een
+  gemeente met eigen normen missen.
+
+Wat de sweep nog steeds **niet** kan, en wat je moet weten voordat je hierop test:
+
+- De AI leest een PDF-bijlage niet, alleen de HTML-tekst van de bekendmaking.
+  Staat de normentabel uitsluitend in een bijlage, dan wordt hij niet gelezen.
+  `heeftPdfBijlage: true` op het document markeert die gevallen.
+- Een gemeente kan afwijkend beleid hebben dat nooit als bekendmaking met deze
   zoektermen is gepubliceerd. Die blijft op de aanname staan.
-- De extractie leest maar de eerste 8000 tekens van een document. Staan de
-  tabellen verderop, dan vindt hij ze niet.
-- De AI leest een PDF-bijlage niet; alleen de HTML-tekst van de bekendmaking.
+- Beleid van vóór 2019 valt buiten de backfill zolang je `vanaf` niet eerder zet.
 
 Daarom krijgt elke gemeente een expliciete `herkomst`:
 
 | `herkomst` | Betekenis |
 | --- | --- |
 | `officiele-bekendmaking` | Waarden komen uit een gemeenteblad; `bronDocument` verwijst naar het exacte besluit |
+| `mogelijk-afwijkend` | Er is een afwijking gevonden maar niet geverifieerd. Toont het landelijk kader, met verwijzing naar het besluit. `tereviewen: true` |
 | `landelijk-kader-aanname` | **Geen document gevonden.** Het landelijk kader is aangenomen, niet vastgesteld |
 | `handmatig` | Handmatig overschreven via de Google Sheet |
+
+Een gevonden afwijking verdwijnt nooit stilzwijgend. Kan de AI niet vaststellen
+dat het document echt eigen normen vaststelt, dan gaat de gemeente naar
+`mogelijk-afwijkend` in plaats van terug naar "volgt landelijk kader". De
+werkvoorraad staat op `GET /v1/te-reviewen`.
 
 Zie de verdeling met `auditData`:
 

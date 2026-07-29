@@ -240,6 +240,57 @@ test('de SRU-connectie is oep, niet de product-area', () => {
 });
 
 // ------------------------------------------------------------------
+test('een fout getal gooit de goede getallen niet weg', () => {
+  const { filterPlausibeleWaarden } = require('../checkBekendmakingen');
+
+  // De oude valideerWaarden gaf false zodra EEN waarde niet klopte, waardoor
+  // correct gelezen afwijkingen uit hetzelfde besluit verdwenen.
+  const { waarden, verworpen } = filterPlausibeleWaarden({
+    pfos: { wonen: 1.5, industrie: 1.5, landbouwNatuur: 0.9 },  // afwijkend, plausibel
+    pfoa: { wonen: 7, industrie: 7, landbouwNatuur: 1.9 },
+    genx: { wonen: 1200, industrie: null, landbouwNatuur: 0.8 } // 1200 is onzin
+  });
+
+  assert.deepStrictEqual(waarden.pfos, { wonen: 1.5, industrie: 1.5, landbouwNatuur: 0.9 },
+    'de afwijkende PFOS-waarden moeten bewaard blijven');
+  assert.strictEqual(waarden.genx.landbouwNatuur, 0.8, 'goede GenX-waarde moet blijven');
+  assert.strictEqual(waarden.genx.wonen, undefined, '1200 moet eruit gefilterd zijn');
+  assert.strictEqual(verworpen.length, 1);
+  assert.strictEqual(verworpen[0].reden, 'boven 50 µg/kg');
+});
+
+// ------------------------------------------------------------------
+test('afwijking diep in een lang document wordt nog gevonden', () => {
+  const { selecteerRelevanteTekst } = require('../checkBekendmakingen');
+
+  // Normentabellen staan in een nota bodembeheer tientallen paginas verderop.
+  // De oude code nam de eerste 8000 tekens en miste ze structureel.
+  const vulling = 'Deze nota beschrijft het bodembeleid. '.repeat(2000);
+  const tabel = 'Voor PFOS geldt een lokale maximale waarde van 1,5 ug/kg ds voor wonen.';
+  const tekst = vulling + tabel + vulling;
+
+  assert.ok(tekst.length > 50000, 'testdocument moet lang zijn');
+  assert.ok(tekst.indexOf(tabel) > 8000, 'tabel moet voorbij de oude 8000-tekengrens liggen');
+
+  const geselecteerd = selecteerRelevanteTekst(tekst);
+  assert.ok(geselecteerd.includes('PFOS'), 'de PFOS-passage moet meegenomen worden');
+  assert.ok(geselecteerd.includes('1,5'), 'de waarde zelf moet meegenomen worden');
+  assert.ok(!tekst.substring(0, 8000).includes('PFOS'), 'controle: oude aanpak zou dit missen');
+});
+
+// ------------------------------------------------------------------
+test('de zoekopdracht omvat het Blad gemeenschappelijke regeling', () => {
+  const { bouwCqlQuery } = require('../checkBekendmakingen');
+  const q = bouwCqlQuery({});
+  // Omgevingsdiensten zijn gemeenschappelijke regelingen; hun bodembeleid
+  // verschijnt daar en niet in een Gemeenteblad.
+  assert.ok(q.includes('w.publicatienaam=="Blad gemeenschappelijke regeling"'),
+    'omgevingsdiensten publiceren hier hun bodembeleid');
+  assert.ok(q.includes('w.publicatienaam=="Gemeenteblad"'));
+  assert.ok(q.includes('w.publicatienaam=="Provinciaal blad"'));
+});
+
+// ------------------------------------------------------------------
 test('er staan geen API-sleutels in de broncode', () => {
   const bestanden = fs.readdirSync(wortel).filter(f => f.endsWith('.js'));
   const verdacht = [];

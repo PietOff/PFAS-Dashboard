@@ -161,6 +161,34 @@ app.get(['/v1/signalen', '/api/v1/signalen'], async (req, res) => {
   }
 });
 
+// Gemeenten waar een mogelijke afwijking is gevonden die nog niet geverifieerd
+// is. Deze tonen in het dashboard het landelijk kader, maar het besluit dat de
+// twijfel veroorzaakte staat erbij. Dit is de werkvoorraad voor handmatige
+// review — laat hem niet vollopen.
+app.get(['/v1/te-reviewen', '/api/v1/te-reviewen'], async (req, res) => {
+  try {
+    const snapshot = await db.collection('pfasData').where('tereviewen', '==', true).get();
+    const data = [];
+    snapshot.forEach(doc => {
+      const d = doc.data();
+      data.push({
+        id: doc.id,
+        gemeente: d.gemeente,
+        herkomst: d.herkomst,
+        bronLink: d.bronLink,
+        bronDocument: d.bronDocument,
+        bronDocumentTitel: d.bronDocumentTitel,
+        bronDocumentDatum: d.bronDocumentDatum,
+        mogelijkeWaarden: d.mogelijkeWaarden || null
+      });
+    });
+    res.json(data);
+  } catch (error) {
+    console.error('Error getting te-reviewen', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 exports.pfasApi = functions.https.onRequest(app);
 
 const { checkOfficieleBekendmakingen, sweepBekendmakingen, herbouwAfwijkingen } = require('./checkBekendmakingen');
@@ -452,6 +480,7 @@ exports.auditData = functions.runWith({ timeoutSeconds: 300 }).https.onRequest(a
     const zwakkeBronnen = [];
     const verouderd = [];
     let afwijkendBeleid = 0;
+    let teReviewen = 0;
     const herkomst = {};
 
     const vandaag = new Date();
@@ -465,6 +494,7 @@ exports.auditData = functions.runWith({ timeoutSeconds: 300 }).https.onRequest(a
       inDb.set(id, data);
 
       if (data.heeftAfwijkendBeleid === true) afwijkendBeleid++;
+      if (data.tereviewen === true) teReviewen++;
       herkomst[data.herkomst || 'onbekend'] = (herkomst[data.herkomst || 'onbekend'] || 0) + 1;
 
       // Waarden plausibel?
@@ -535,7 +565,8 @@ exports.auditData = functions.runWith({ timeoutSeconds: 300 }).https.onRequest(a
         verdachteWaarden: verdachteWaarden.length,
         zwakkeBronlinks: zwakkeBronnen.length,
         verouderd: verouderd.length,
-        metAfwijkendBeleid: afwijkendBeleid
+        metAfwijkendBeleid: afwijkendBeleid,
+        teReviewen
       },
       // Waar komt het getal per gemeente vandaan? 'landelijk-kader-aanname'
       // betekent: geen officieel document gevonden, landelijk kader aangenomen.
