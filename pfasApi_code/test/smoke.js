@@ -75,7 +75,8 @@ test('index.js laadt en exporteert alle Cloud Functions', () => {
     'fixLinks',
     'syncSheetNow',
     'findRealLinks',
-    'mergeDuplicateDocs'
+    'mergeDuplicateDocs',
+    'auditData'
   ];
 
   for (const naam of verwacht) {
@@ -166,6 +167,46 @@ test('pfas_normen.json en gemeente_mapping.json zijn geldig', () => {
   for (const [gemeente, link] of Object.entries(mapping)) {
     assert.ok(/^https?:\/\//.test(link), `Ongeldige bronLink voor ${gemeente}: ${link}`);
   }
+});
+
+// ------------------------------------------------------------------
+test('gemeente_mapping bevat geen opgeheven gemeenten', () => {
+  // Bij een herindeling moet de oude naam weg en de nieuwe erin, anders blijft
+  // het dashboard normen tonen voor een gemeente die niet meer bestaat.
+  const mapping = require('../gemeente_mapping.json');
+
+  const opgeheven = {
+    'Aalburg': 'Altena', 'Werkendam': 'Altena', 'Woudrichem': 'Altena',
+    'Leerdam': 'Vijfheerenlanden', 'Zederik': 'Vijfheerenlanden', 'Vianen': 'Vijfheerenlanden',
+    'Binnenmaas': 'Hoeksche Waard', 'Cromstrijen': 'Hoeksche Waard', 'Korendijk': 'Hoeksche Waard',
+    'Oud-Beijerland': 'Hoeksche Waard', 'Strijen': 'Hoeksche Waard',
+    'Giessenlanden': 'Molenlanden', 'Molenwaard': 'Molenlanden',
+    'Noordwijkerhout': 'Noordwijk', 'Haren': 'Groningen', 'Ten Boer': 'Groningen',
+    'Appingedam': 'Eemsdelta', 'Delfzijl': 'Eemsdelta', 'Loppersum': 'Eemsdelta',
+    'Beemster': 'Purmerend', 'Weesp': 'Amsterdam',
+    'Landerd': 'Maashorst', 'Uden': 'Maashorst',
+    'Boxmeer': 'Land van Cuijk', 'Cuijk': 'Land van Cuijk', 'Grave': 'Land van Cuijk',
+    'Mill en Sint Hubert': 'Land van Cuijk', 'Sint Anthonis': 'Land van Cuijk',
+    'Heerhugowaard': 'Dijk en Waard', 'Langedijk': 'Dijk en Waard',
+    'Brielle': 'Voorne aan Zee', 'Hellevoetsluis': 'Voorne aan Zee', 'Westvoorne': 'Voorne aan Zee'
+  };
+
+  const aanwezig = Object.keys(opgeheven).filter(g => g in mapping);
+  assert.deepStrictEqual(aanwezig, [],
+    `Opgeheven gemeenten staan nog in de mapping: ${aanwezig.map(g => `${g} -> ${opgeheven[g]}`).join(', ')}`);
+
+  // De opvolgers moeten er juist wél in staan
+  const ontbrekend = [...new Set(Object.values(opgeheven))].filter(g => !(g in mapping));
+  assert.deepStrictEqual(ontbrekend, [], `Opvolgergemeenten ontbreken: ${ontbrekend.join(', ')}`);
+});
+
+// ------------------------------------------------------------------
+test('gemeentelijst keurt een onwaarschijnlijk aantal gemeenten af', () => {
+  const { MIN_GEMEENTEN, MAX_GEMEENTEN } = require('../gemeentelijst');
+  // Nederland heeft 342 gemeenten; de marge moet daar omheen liggen zodat een
+  // lege of half geladen bron wordt afgekeurd in plaats van gebruikt.
+  assert.ok(MIN_GEMEENTEN < 342 && MAX_GEMEENTEN > 342, 'marge sluit 342 niet in');
+  assert.ok(MIN_GEMEENTEN > 200, 'ondergrens te laag om iets af te vangen');
 });
 
 // ------------------------------------------------------------------

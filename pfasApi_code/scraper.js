@@ -5,6 +5,7 @@ const { getAdapterData } = require('./adapters/index');
 const gemeenteMapping = require('./gemeente_mapping.json');
 const pfasNormen = require('./pfas_normen.json');
 const { toDocId } = require('./docId');
+const { haalGemeenteLijst } = require('./gemeentelijst');
 
 // ============================================================
 // PRIMAIRE DATABRON: Hardcoded, geverifieerde PFAS normen
@@ -169,16 +170,17 @@ module.exports = {
       // Fallback als er onvoldoende data is
       if (targets.length === 0) {
         console.log("Geen gemeenten gevonden via orderBy laatstGeupdate. Val terug op lijst.");
-        const geoResponse = await axios.get('https://pfas-dashboard-nl-a808d.web.app/gemeenten.geojson');
-        targets = geoResponse.data.features.map(f => f.properties.statnaam).filter(Boolean).slice(0, 10);
+        const lijst = await haalGemeenteLijst();
+        targets = lijst.gemeenten.slice(0, 10);
       }
     } else {
-      // Alle gemeenten ophalen
-      const geoResponse = await axios.get('https://pfas-dashboard-nl-a808d.web.app/gemeenten.geojson');
-      const features = geoResponse.data.features;
-      let gemeenten = features.map(f => f.properties.statnaam).filter(Boolean);
-      gemeenten.sort();
+      // Alle gemeenten ophalen uit de canonieke lijst (Kadaster), niet uit een
+      // geojson op de eigen hosting — anders mist elke herindeling.
+      const lijst = await haalGemeenteLijst();
+      console.log(`Gemeentelijst via: ${lijst.bron} (${lijst.gemeenten.length} gemeenten)`);
+      for (const w of lijst.waarschuwingen) console.warn(`   ⚠️ ${w}`);
 
+      const gemeenten = lijst.gemeenten;
       targets = gemeenten;
       if (batchIndex !== null && typeof batchIndex === 'number') {
         const batchSize = Math.ceil(gemeenten.length / 7);

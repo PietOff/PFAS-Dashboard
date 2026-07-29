@@ -96,6 +96,93 @@ curl "https://<regio>-pfas-dashboard-nl-a808d.cloudfunctions.net/mergeDuplicateD
 Handmatige overschrijvingen (`handmatigeOverschrijving: true`) winnen bij het
 samenvoegen, daarna het canonieke document, daarna het meest recent bijgewerkte.
 
+## Dekking en juistheid
+
+Twee verschillende problemen, met verschillende oplossingen.
+
+### Dekking: krijgt elke gemeente een rij?
+
+Dit is mechanisch en dus oplosbaar. De gemeentelijst komt uit `gemeentelijst.js`,
+die het Kadaster (PDOK Bestuurlijke Gebieden) bevraagt en pas terugvalt op
+`gemeenten.geojson` als dat niet lukt. Elke bron wordt afgekeurd als hij minder
+dan 320 of meer dan 400 gemeenten oplevert, zodat een gewijzigd API-formaat niet
+stilletjes een halve lijst doorlaat.
+
+Dat de scraper zonder fouten draait bewijst nog niet dat de dekking klopt.
+Daarvoor is `auditData`, dat Firestore vergelijkt met de canonieke lijst:
+
+```bash
+curl "https://<regio>-pfas-dashboard-nl-a808d.cloudfunctions.net/auditData" | jq .samenvatting
+```
+
+```jsonc
+{
+  "gemeentenVolgensBron": 342,
+  "documentenInFirestore": 342,
+  "dekkingProcent": 100,
+  "ontbrekend": 0,          // in de lijst, niet in Firestore
+  "verweesd": 0,            // in Firestore, bestaat niet meer (herindeling)
+  "dubbeleIds": 0,          // document-id wijkt af van toDocId(gemeente)
+  "verdachteWaarden": 0,    // ontbrekend, <= 0 of > 50 µg/kg
+  "zwakkeBronlinks": 0,     // homepage-only, Google-zoekopdracht of ongeldig
+  "verouderd": 0            // langer dan ?maxDagen=90 niet bijgewerkt
+}
+```
+
+Draai dit na elke scraper-run. Alles behalve `dekkingProcent: 100` met nul
+`ontbrekend` en nul `verweesd` betekent dat het dashboard gaten heeft.
+
+### Juistheid: kloppen de getallen?
+
+**De app scrapet de getallen niet en hoort dat ook niet te doen.**
+`pfas_normen.json` is leidend: het landelijk kader plus een handmatig
+geverifieerde lijst van gemeenten die daarvan afwijken. `getHardcodedData()`
+geeft die waarden terug; de AI-scan schrijft nooit een getal naar het dashboard.
+
+Dat is bewust. Een gehallucineerde norm voor grondverzet is erger dan geen norm,
+want iemand handelt ernaar. Meer gemeenten scrapen maakt geen enkel getal
+juister — het vult alleen meer rijen met dezelfde aanname.
+
+De juistheid hangt dus aan één vraag: **klopt de lijst met afwijkende
+gemeenten?** Op dit moment staan er 12 in. Elke gemeente die lokaal beleid heeft
+maar niet in die lijst staat, toont nu het landelijk kader alsof dat vaststaat.
+
+Er bestaat geen landelijk register van lokale PFAS-normen, dus dit is geen
+technisch probleem dat je wegprogrammeert. Wat het systeem wel kan:
+
+1. **Officiële Bekendmakingen als enige automatische bron.** `checkBekendmakingen`
+   leest de SRU API van KOOP. Dat is juridisch bindend gepubliceerd beleid — de
+   enige machineleesbare bron die als vaststaand mag gelden.
+2. **Alles anders belandt in `pfasSignalen`** voor handmatige review, niet in het
+   dashboard.
+3. **Toon het verschil in de UI.** Een waarde die uit een gemeenteblad komt is
+   iets anders dan de aanname "volgt landelijk kader". `heeftAfwijkendBeleid`,
+   `bronType` en `confidenceScore` staan al in de documenten; presenteer een
+   aanname nooit als een vaststelling.
+
+### Bronlinks
+
+`check-links.js` controleert of de links in `gemeente_mapping.json` bestaan:
+
+```bash
+node check-links.js --kapot      # alleen de kapotte
+node check-links.js --json > rapport.json
+```
+
+Dit is nodig omdat de links deels gegokt zijn: 152 van de 349 deelden exact het
+pad `/themas/bodem` en 103 waren alleen een homepage. De prompt in
+`findRealLinks` droeg de AI letterlijk op om bij twijfel de homepage van de
+meest waarschijnlijke omgevingsdienst te geven. Een link die 404 geeft is voor
+een gebruiker erger dan geen link.
+
+### Herindelingen
+
+Gemeenten verdwijnen en ontstaan. `npm test` faalt als er een opgeheven gemeente
+in `gemeente_mapping.json` staat of als een opvolger ontbreekt; `auditData`
+meldt verweesde documenten in Firestore. Negen opgeheven gemeenten (Aalburg,
+Beemster, Boxmeer, Cuijk, Grave, Landerd, Mill en Sint Hubert, Sint Anthonis,
+Uden) stonden er nog in en zijn verwijderd.
+
 ## Firestore-rules
 
 `firestore.rules` staat publiek lezen toe op `pfasData` en `pfasSignalen` en
