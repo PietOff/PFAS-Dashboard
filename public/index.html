@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PFAS Dashboard — normen voor grondverzet per gemeente</title>
+<meta name="description" content="Welke PFAS-normen gelden er bij grondverzet in jouw gemeente, en welke gemeenten wijken af van het landelijke handelingskader.">
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --page: #f9f9f7;
+    --ink-1: #0b0b0b;
+    --ink-2: #52514e;
+    --ink-muted: #898781;
+    --hairline: #e1e0d9;
+    --border: rgba(11, 11, 11, 0.10);
+
+    /* Kaartvlakken. Zie README: neutraal = grond (geen document gevonden),
+       oranje = vastgesteld afwijkend beleid, oranje met arcering = mogelijk
+       afwijkend maar niet geverifieerd. */
+    --fill-landelijk: #c3c2b7;
+    --fill-afwijkend: #eb6834;
+    --fill-review: #eb6834;
+    --stroke-map: #fcfcfb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1: #1a1a19;
+      --page: #0d0d0d;
+      --ink-1: #ffffff;
+      --ink-2: #c3c2b7;
+      --ink-muted: #898781;
+      --hairline: #2c2c2a;
+      --border: rgba(255, 255, 255, 0.10);
+      --fill-landelijk: #383835;
+      --fill-afwijkend: #d95926;
+      --fill-review: #d95926;
+      --stroke-map: #1a1a19;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --page: #0d0d0d;
+    --ink-1: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-muted: #898781;
+    --hairline: #2c2c2a;
+    --border: rgba(255, 255, 255, 0.10);
+    --fill-landelijk: #383835;
+    --fill-afwijkend: #d95926;
+    --fill-review: #d95926;
+    --stroke-map: #1a1a19;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    color: var(--ink-1);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 24px 20px 64px; }
+
+  header h1 { font-size: 1.5rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+  header p.sub { margin: 0 0 20px; color: var(--ink-2); max-width: 62ch; }
+
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    margin-bottom: 16px;
+  }
+  input[type="search"], button {
+    font: inherit; color: var(--ink-1); background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px;
+  }
+  input[type="search"] { min-width: 240px; flex: 1 1 240px; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--ink-muted); }
+  button[aria-pressed="true"] { background: var(--ink-1); color: var(--surface-1); }
+
+  .layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px;
+  }
+
+  #map-card { padding: 8px; position: relative; }
+  svg#map { display: block; width: 100%; height: auto; }
+  svg#map path {
+    stroke: var(--stroke-map); stroke-width: 0.6; cursor: pointer;
+    transition: opacity 120ms ease;
+  }
+  svg#map path:focus-visible { outline: none; stroke: var(--ink-1); stroke-width: 2; }
+  svg#map path.dim { opacity: 0.25; }
+  svg#map path.sel { stroke: var(--ink-1); stroke-width: 1.8; }
+
+  .status { color: var(--ink-2); padding: 24px; text-align: center; }
+  .status.err { color: #d03b3b; }
+
+  /* Legenda — de kleur draagt nooit alleen de betekenis (contrast < 3:1),
+     dus altijd label erbij, plus de tabelweergave als tweede kanaal. */
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 4px 2px; font-size: 0.84rem; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); }
+  .swatch { width: 15px; height: 15px; border-radius: 3px; border: 1px solid var(--border); flex: none; }
+
+  #tooltip {
+    position: fixed; pointer-events: none; z-index: 20; opacity: 0;
+    background: var(--surface-1); color: var(--ink-1);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 10px; font-size: 0.85rem; max-width: 260px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.16); transition: opacity 90ms ease;
+  }
+  #tooltip strong { display: block; }
+  #tooltip em { color: var(--ink-2); font-style: normal; font-size: 0.9em; }
+
+  .panel h2 { font-size: 1.1rem; margin: 0 0 2px; }
+  .panel .od { color: var(--ink-2); font-size: 0.88rem; margin: 0 0 12px; }
+  .badge {
+    display: inline-block; font-size: 0.72rem; font-weight: 600;
+    padding: 3px 8px; border-radius: 999px; margin-bottom: 10px;
+    border: 1px solid var(--border);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+  th, td { text-align: right; padding: 6px 4px; border-bottom: 1px solid var(--hairline); }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { color: var(--ink-muted); font-weight: 600; font-size: 0.78rem; }
+  td.num { font-variant-numeric: tabular-nums; }
+  .panel dl { margin: 14px 0 0; font-size: 0.86rem; }
+  .panel dt { color: var(--ink-muted); font-size: 0.78rem; margin-top: 10px; }
+  .panel dd { margin: 2px 0 0; color: var(--ink-2); }
+  a { color: inherit; }
+
+  #table-view { margin-top: 20px; overflow-x: auto; }
+  #table-view table { min-width: 720px; }
+
+  .note {
+    margin-top: 24px; padding: 14px 16px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--surface-1);
+    color: var(--ink-2); font-size: 0.86rem;
+  }
+  .note strong { color: var(--ink-1); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>PFAS-normen per gemeente</h1>
+    <p class="sub">
+      Welke toepassingswaarden gelden er bij grondverzet, en in welke gemeenten
+      geldt eigen beleid dat afwijkt van het landelijke handelingskader.
+    </p>
+  </header>
+
+  <div class="toolbar">
+    <input type="search" id="zoek" placeholder="Zoek een gemeente…" autocomplete="off" aria-label="Zoek een gemeente">
+    <button id="toggle-tabel" aria-pressed="false">Tabelweergave</button>
+    <button id="toggle-thema" title="Wissel licht/donker">Thema</button>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="card" id="map-card">
+        <div class="status" id="map-status">Kaart en normen worden geladen…</div>
+        <svg id="map" class="hidden" role="img" aria-label="Kaart van Nederlandse gemeenten, gekleurd naar PFAS-beleid"></svg>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <aside class="card panel" id="panel">
+      <p class="od">Kies een gemeente op de kaart of zoek hierboven.</p>
+    </aside>
+  </div>
+
+  <div id="table-view" class="hidden"></div>
+
+  <p class="note" id="note"></p>
+</div>
+
+<div id="tooltip" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------------------------------------------------------------
+  // Configuratie
+  // ---------------------------------------------------------------
+  // De API loopt via een hosting-rewrite naar de Cloud Function, zodat er geen
+  // regio in de URL hoeft en CORS geen rol speelt. Zie firebase.json.
+  const API = '/api/v1/gemeenten';
+
+  // Gemeentegrenzen: eerst het bestand op de eigen hosting (zoals de oude
+  // versie), anders rechtstreeks bij het Kadaster.
+  const GEO_BRONNEN = [
+    { url: '/gemeenten.geojson', naam: 'gemeenten.geojson' },
+    {
+      url: 'https://api.pdok.nl/kadaster/bestuurlijkegebieden/ogc/v1/collections/gemeentegebied/items?f=json&limit=500',
+      naam: 'PDOK Bestuurlijke Gebieden'
+    }
+  ];
+
+  const HERKOMST = {
+    'officiele-bekendmaking': {
+      label: 'Afwijkend beleid vastgesteld',
+      fill: 'var(--fill-afwijkend)',
+      hatch: false
+    },
+    'mogelijk-afwijkend': {
+      label: 'Mogelijk afwijkend — niet geverifieerd',
+      fill: 'var(--fill-review)',
+      hatch: true
+    },
+    'landelijk-kader-aanname': {
+      label: 'Geen eigen beleid gevonden — landelijk kader',
+      fill: 'var(--fill-landelijk)',
+      hatch: false
+    },
+    'handmatig': {
+      label: 'Handmatig vastgesteld',
+      fill: 'var(--fill-afwijkend)',
+      hatch: false
+    }
+  };
+  const ONBEKEND = {
+    label: 'Herkomst onbekend',
+    fill: 'var(--fill-landelijk)',
+    hatch: false
+  };
+
+  const STOFFEN = [
+    ['pfos', 'PFOS'],
+    ['pfoa', 'PFOA'],
+    ['genx', 'GenX']
+  ];
+  const KLASSEN = [
+    ['wonen', 'Wonen'],
+    ['industrie', 'Industrie'],
+    ['landbouwNatuur', 'Landbouw / natuur']
+  ];
+
+  // ---------------------------------------------------------------
+  // Hulpfuncties
+  // ---------------------------------------------------------------
+  // Zelfde normalisatie als docId.js in de backend, zodat de kaart en de API
+  // op dezelfde sleutel matchen.
+  const toId = (naam) =>
+    naam == null ? null : String(naam).toLowerCase().trim().replace(/\s+/g, '-') || null;
+
+  const el = (id) => document.getElementById(id);
+  const fmt = (v) =>
+    typeof v === 'number' && isFinite(v)
+      ? v.toLocaleString('nl-NL', { minimumFractionDigits: 1, maximumFractionDigits: 2 })
+      : '—';
+
+  function herkomstVan(rec) {
+    if (!rec) return ONBEKEND;
+    return HERKOMST[rec.herkomst] || (rec.heeftAfwijkendBeleid ? HERKOMST['officiele-bekendmaking'] : ONBEKEND);
+  }
+
+  // ---------------------------------------------------------------
+  // Data laden
+  // ---------------------------------------------------------------
+  async function haalGeo() {
+    const fouten = [];
+    for (const bron of GEO_BRONNEN) {
+      try {
+        const r = await fetch(bron.url);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        if (!data || !Array.isArray(data.features) || data.features.length < 100) {
+          throw new Error('onverwacht formaat of te weinig features');
+        }
+        return { data, bron: bron.naam };
+      } catch (e) {
+        fouten.push(`${bron.naam}: ${e.message}`);
+      }
+    }
+    throw new Error('Geen gemeentegrenzen beschikbaar (' + fouten.join('; ') + ')');
+  }
+
+  async function haalNormen() {
+    const r = await fetch(API);
+    if (!r.ok) throw new Error('API gaf HTTP ' + r.status);
+    const data = await r.json();
+    if (!Array.isArray(data)) throw new Error('API gaf geen lijst terug');
+    return data;
+  }
+
+  const naamVanFeature = (f) => {
+    const p = f.properties || {};
+    return p.statnaam || p.naam || p.gemeentenaam || p.name || null;
+  };
+
+  // ---------------------------------------------------------------
+  // Projectie
+  // ---------------------------------------------------------------
+  // Werkt zowel voor WGS84 (lengte/breedte) als voor een geprojecteerd stelsel
+  // zoals RD (EPSG:28992): de bounding box wordt op het viewport geschaald.
+  // Bij WGS84 wordt de x-as gecorrigeerd zodat Nederland niet uitgerekt wordt.
+  function maakProjectie(features) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    eachCoord(features, ([x, y]) => {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    });
+
+    const isWgs84 = minX >= -180 && maxX <= 180 && minY >= -90 && maxY <= 90;
+    const xScale = isWgs84 ? Math.cos(((minY + maxY) / 2) * Math.PI / 180) : 1;
+
+    const w = (maxX - minX) * xScale;
+    const h = maxY - minY;
+    const BREEDTE = 700;
+    const s = BREEDTE / w;
+    const HOOGTE = h * s;
+
+    return {
+      breedte: BREEDTE,
+      hoogte: HOOGTE,
+      punt: ([x, y]) => [ (x - minX) * xScale * s, HOOGTE - (y - minY) * s ]
+    };
+  }
+
+  function eachCoord(features, fn) {
+    const loop = (c) => {
+      if (typeof c[0] === 'number') { fn(c); return; }
+      for (const k of c) loop(k);
+    };
+    for (const f of features) if (f.geometry && f.geometry.coordinates) loop(f.geometry.coordinates);
+  }
+
+  function pad(geometry, projectie) {
+    const ringen = [];
+    const push = (ring) => {
+      if (!Array.isArray(ring) || ring.length < 3) return;
+      let d = '';
+      for (let i = 0; i < ring.length; i++) {
+        const [x, y] = projectie.punt(ring[i]);
+        d += (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+      }
+      ringen.push(d + 'Z');
+    };
+    const t = geometry.type;
+    if (t === 'Polygon') geometry.coordinates.forEach(push);
+    else if (t === 'MultiPolygon') geometry.coordinates.forEach(p => p.forEach(push));
+    return ringen.join('');
+  }
+
+  // ---------------------------------------------------------------
+  // Rendering
+  // ---------------------------------------------------------------
+  let normenPerId = new Map();
+  let paden = [];
+  let geselecteerd = null;
+
+  function tekenKaart(features, projectie) {
+    const svg = el('map');
+    svg.setAttribute('viewBox', `0 0 ${projectie.breedte} ${projectie.hoogte.toFixed(0)}`);
+
+    // Arceerpatroon als tweede kanaal voor "mogelijk afwijkend" — kleur alleen
+    // zou hier niet te onderscheiden zijn van vastgesteld afwijkend beleid.
+    svg.innerHTML =
+      '<defs><pattern id="hatch" width="6" height="6" patternTransform="rotate(45)" ' +
+      'patternUnits="userSpaceOnUse">' +
+      '<rect width="6" height="6" fill="var(--fill-review)"></rect>' +
+      '<line x1="0" y1="0" x2="0" y2="6" stroke="var(--surface-1)" stroke-width="2.5"></line>' +
+      '</pattern></defs>';
+
+    paden = [];
+    for (const f of features) {
+      const naam = naamVanFeature(f);
+      if (!naam || !f.geometry) continue;
+      const d = pad(f.geometry, projectie);
+      if (!d) continue;
+
+      const id = toId(naam);
+      const rec = normenPerId.get(id) || null;
+      const h = herkomstVan(rec);
+
+      const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p.setAttribute('d', d);
+      p.setAttribute('fill', h.hatch ? 'url(#hatch)' : h.fill);
+      p.setAttribute('tabindex', '0');
+      p.setAttribute('role', 'button');
+      p.setAttribute('aria-label', `${naam}: ${h.label}`);
+      p.dataset.id = id;
+      p.dataset.naam = naam;
+
+      p.addEventListener('mouseenter', (e) => toonTooltip(e, naam, h.label));
+      p.addEventListener('mousemove', (e) => plaatsTooltip(e));
+      p.addEventListener('mouseleave', verbergTooltip);
+      p.addEventListener('click', () => kies(id, naam));
+      p.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); kies(id, naam); }
+      });
+
+      svg.appendChild(p);
+      paden.push(p);
+    }
+
+    el('map-status').classList.add('hidden');
+    svg.classList.remove('hidden');
+  }
+
+  function toonTooltip(e, naam, label) {
+    const t = el('tooltip');
+    t.innerHTML = `<strong></strong><em></em>`;
+    t.querySelector('strong').textContent = naam;
+    t.querySelector('em').textContent = label;
+    t.style.opacity = '1';
+    plaatsTooltip(e);
+  }
+  function plaatsTooltip(e) {
+    const t = el('tooltip');
+    const r = t.getBoundingClientRect();
+    let x = e.clientX + 14, y = e.clientY + 14;
+    if (x + r.width > innerWidth - 8) x = e.clientX - r.width - 14;
+    if (y + r.height > innerHeight - 8) y = e.clientY - r.height - 14;
+    t.style.left = x + 'px';
+    t.style.top = y + 'px';
+  }
+  function verbergTooltip() { el('tooltip').style.opacity = '0'; }
+
+  function kies(id, naam) {
+    geselecteerd = id;
+    for (const p of paden) p.classList.toggle('sel', p.dataset.id === id);
+    vulPaneel(id, naam);
+  }
+
+  function vulPaneel(id, naam) {
+    const rec = normenPerId.get(id);
+    const panel = el('panel');
+
+    if (!rec) {
+      panel.innerHTML = '<h2></h2><p class="od">Geen gegevens in de database voor deze gemeente.</p>';
+      panel.querySelector('h2').textContent = naam;
+      return;
+    }
+
+    const h = herkomstVan(rec);
+    const rows = STOFFEN.map(([sk, sl]) => {
+      const w = rec[sk] || {};
+      return `<tr><td>${sl}</td>` +
+        KLASSEN.map(([kk]) => `<td class="num">${fmt(w[kk])}</td>`).join('') +
+        `</tr>`;
+    }).join('');
+
+    const bron = rec.bronLink
+      ? `<a href="${encodeURI(rec.bronLink)}" target="_blank" rel="noopener noreferrer">Bron bekijken</a>`
+      : '—';
+
+    const besluit = rec.bronDocumentTitel
+      ? `<dt>Besluit</dt><dd>${escapeHtml(rec.bronDocumentTitel)}${rec.bronDocumentDatum ? ' (' + escapeHtml(rec.bronDocumentDatum) + ')' : ''}</dd>`
+      : '';
+
+    panel.innerHTML = `
+      <h2>${escapeHtml(rec.gemeente || naam)}</h2>
+      <p class="od">${escapeHtml(rec.omgevingsdienst || 'Omgevingsdienst onbekend')}</p>
+      <span class="badge">${escapeHtml(h.label)}</span>
+      <table>
+        <caption class="hidden">Toepassingswaarden in µg/kg droge stof</caption>
+        <thead><tr><th>µg/kg ds</th>${KLASSEN.map(([, l]) => `<th>${l}</th>`).join('')}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <dl>
+        ${besluit}
+        <dt>Toelichting</dt><dd>${escapeHtml(rec.opmerkingen || '—')}</dd>
+        <dt>Laatst gecontroleerd</dt><dd>${escapeHtml(rec.laatstGecontroleerd || rec.laatstGeupdate || '—')}</dd>
+        <dt>Bron</dt><dd>${bron}</dd>
+      </dl>`;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function tekenLegenda(telling) {
+    const items = [
+      ['landelijk-kader-aanname', 'var(--fill-landelijk)', false],
+      ['officiele-bekendmaking', 'var(--fill-afwijkend)', false],
+      ['mogelijk-afwijkend', 'var(--fill-review)', true]
+    ];
+    el('legend').innerHTML = items.map(([k, kleur, hatch]) => {
+      const n = telling[k] || 0;
+      const stijl = hatch
+        ? `background:repeating-linear-gradient(45deg,${kleur} 0 2px,var(--surface-1) 2px 4px)`
+        : `background:${kleur}`;
+      return `<span><i class="swatch" style="${stijl}"></i>${HERKOMST[k].label} (${n})</span>`;
+    }).join('');
+  }
+
+  // Tabelweergave: tweede kanaal naast kleur, en tegelijk de "relief" die de
+  // lage vlakcontrast van de kaart moet compenseren.
+  function tekenTabel(records) {
+    const rows = records
+      .slice()
+      .sort((a, b) => String(a.gemeente || '').localeCompare(String(b.gemeente || ''), 'nl'))
+      .map(r => {
+        const h = herkomstVan(r);
+        const cellen = STOFFEN.flatMap(([sk]) =>
+          KLASSEN.map(([kk]) => `<td class="num">${fmt((r[sk] || {})[kk])}</td>`)).join('');
+        return `<tr><td>${escapeHtml(r.gemeente || r.id)}</td><td>${escapeHtml(h.label)}</td>${cellen}</tr>`;
+      }).join('');
+
+    const kop = STOFFEN.flatMap(([, sl]) => KLASSEN.map(([, kl]) => `<th>${sl} ${kl}</th>`)).join('');
+    el('table-view').innerHTML = `
+      <div class="card"><table>
+        <thead><tr><th>Gemeente</th><th>Herkomst</th>${kop}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+  }
+
+  function zoekFilter(term) {
+    const q = term.trim().toLowerCase();
+    for (const p of paden) {
+      p.classList.toggle('dim', Boolean(q) && !p.dataset.naam.toLowerCase().includes(q));
+    }
+    if (q) {
+      const treffer = paden.find(p => p.dataset.naam.toLowerCase().startsWith(q));
+      if (treffer) kies(treffer.dataset.id, treffer.dataset.naam);
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Opstarten
+  // ---------------------------------------------------------------
+  async function start() {
+    let records;
+    try {
+      records = await haalNormen();
+    } catch (e) {
+      el('map-status').className = 'status err';
+      el('map-status').textContent = 'De normen konden niet worden geladen: ' + e.message;
+      return;
+    }
+
+    normenPerId = new Map(records.map(r => [r.id || toId(r.gemeente), r]));
+
+    const telling = {};
+    for (const r of records) {
+      const k = HERKOMST[r.herkomst] ? r.herkomst
+        : (r.heeftAfwijkendBeleid ? 'officiele-bekendmaking' : 'landelijk-kader-aanname');
+      telling[k] = (telling[k] || 0) + 1;
+    }
+    tekenLegenda(telling);
+    tekenTabel(records);
+
+    const aanname = telling['landelijk-kader-aanname'] || 0;
+    el('note').innerHTML =
+      `<strong>Lees dit voordat je hierop vertrouwt.</strong> Voor ${aanname} van de ` +
+      `${records.length} gemeenten is géén eigen bodembeleid gevonden; daar staat het ` +
+      `landelijke handelingskader als <em>aanname</em>, niet als vaststelling. ` +
+      `Dit dashboard is een hulpmiddel en vervangt geen milieuhygiënische verklaring — ` +
+      `controleer altijd de bron en de regionale omgevingsdienst.`;
+
+    try {
+      const { data, bron } = await haalGeo();
+      tekenKaart(data.features, maakProjectie(data.features));
+      console.info('Gemeentegrenzen via: ' + bron);
+    } catch (e) {
+      // Zonder kaart is de tabel nog steeds volledig bruikbaar.
+      el('map-status').className = 'status err';
+      el('map-status').textContent = 'De kaart kon niet worden geladen (' + e.message +
+        '). Gebruik de tabelweergave.';
+      el('toggle-tabel').click();
+    }
+  }
+
+  el('zoek').addEventListener('input', (e) => zoekFilter(e.target.value));
+  el('toggle-tabel').addEventListener('click', (e) => {
+    const aan = el('table-view').classList.toggle('hidden') === false;
+    e.currentTarget.setAttribute('aria-pressed', String(aan));
+  });
+  el('toggle-thema').addEventListener('click', () => {
+    const nu = document.documentElement.getAttribute('data-theme');
+    const donker = nu ? nu === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', donker ? 'light' : 'dark');
+  });
+
+  start();
+})();
+</script>
+</body>
+</html>

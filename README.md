@@ -7,11 +7,31 @@ De API levert per Nederlandse gemeente de geldende PFAS-normen voor grondverzet
 (PFOS, PFOA, GenX) en signaleert nieuw lokaal bodembeleid via de officiële
 bekendmakingen van de overheid.
 
-> **Let op:** in deze repository staat alleen de **backend**. De frontend die op
-> `pfas-dashboard-nl-a808d.web.app` draait — inclusief `gemeenten.geojson`, dat
-> `fillDefaultData` en de scraper ophalen — zit hier niet in en staat dus ook
-> niet onder versiebeheer. `firebase.json` bevat daarom bewust **geen**
-> `hosting`-blok: een deploy vanuit deze repo mag de live site niet overschrijven.
+## ⚠️ Lees dit voor de eerste hosting-deploy
+
+Een hosting-deploy **vervangt de hele site**. Alles wat nu op
+`pfas-dashboard-nl-a808d.web.app` staat maar niet in `public/` zit, is daarna weg.
+
+Dat geldt met name voor **`gemeenten.geojson`**. Dat bestand staat op de live
+hosting maar zat nooit in deze repository. Haal het eerst binnen:
+
+```bash
+curl -o public/gemeenten.geojson https://pfas-dashboard-nl-a808d.web.app/gemeenten.geojson
+```
+
+De frontend werkt ook zonder — hij valt dan terug op de Kadaster-API voor de
+gemeentegrenzen — maar dat is een externe afhankelijkheid bij elk paginabezoek.
+Met het bestand erbij is de site zelfvoorzienend.
+
+De frontend in `public/index.html` is **opnieuw opgebouwd**, niet gekopieerd: de
+oorspronkelijke site was niet in te zien vanaf de plek waar dit werk gedaan is.
+Hij gebruikt dezelfde data (`/api/v1/gemeenten`) en dezelfde kleurlogica
+(oranje = afwijkend), maar de vormgeving zal verschillen van wat er nu staat.
+Vergelijk met de live site voordat je deployt.
+
+Controleer ook de **regio** in de rewrite in `firebase.json`. Die staat op
+`us-central1`; staan de functions elders, dan geeft `/api/**` een 404. Zoek de
+regio op in de Firebase Console onder Functions.
 
 ## Structuur
 

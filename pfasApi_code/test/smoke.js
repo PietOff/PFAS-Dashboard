@@ -291,6 +291,37 @@ test('de zoekopdracht omvat het Blad gemeenschappelijke regeling', () => {
 });
 
 // ------------------------------------------------------------------
+test('de frontend en de hosting-configuratie sluiten op elkaar aan', () => {
+  const repo = path.join(wortel, '..');
+  const cfg = JSON.parse(fs.readFileSync(path.join(repo, 'firebase.json'), 'utf8'));
+
+  assert.ok(cfg.hosting, 'firebase.json mist een hosting-blok');
+  assert.strictEqual(cfg.hosting.public, 'public');
+
+  const indexPad = path.join(repo, cfg.hosting.public, 'index.html');
+  assert.ok(fs.existsSync(indexPad), 'public/index.html ontbreekt');
+  const html = fs.readFileSync(indexPad, 'utf8');
+
+  // De frontend praat via de rewrite met de function; als die wegvalt krijgt
+  // /api/** een 404 en blijft het dashboard leeg.
+  const rewrite = (cfg.hosting.rewrites || []).find(r => r.source === '/api/**');
+  assert.ok(rewrite, 'rewrite voor /api/** ontbreekt');
+  assert.strictEqual(rewrite.function, 'pfasApi');
+
+  assert.ok(html.includes("'/api/v1/gemeenten'"), 'frontend gebruikt het API-pad niet');
+
+  // Express moet dat pad met /api-prefix ook echt aanbieden.
+  const idxBron = fs.readFileSync(path.join(wortel, 'index.js'), 'utf8');
+  assert.ok(idxBron.includes("'/api/v1/gemeenten'"), 'index.js serveert /api/v1/gemeenten niet');
+
+  // Alle herkomst-waarden die de backend schrijft moeten in de kaartlegenda
+  // voorkomen, anders valt een toestand stil terug op de neutrale kleur.
+  for (const h of ['officiele-bekendmaking', 'mogelijk-afwijkend', 'landelijk-kader-aanname', 'handmatig']) {
+    assert.ok(html.includes(h), `frontend kent herkomst '${h}' niet`);
+  }
+});
+
+// ------------------------------------------------------------------
 test('er staan geen API-sleutels in de broncode', () => {
   const bestanden = fs.readdirSync(wortel).filter(f => f.endsWith('.js'));
   const verdacht = [];

@@ -22,5 +22,26 @@
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": "public",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "function": "pfasApi",
+        "region": "us-central1"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/gemeenten.geojson",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
+      },
+      {
+        "source": "/index.html",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ]
   }
 }
