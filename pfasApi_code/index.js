@@ -324,7 +324,9 @@ exports.fillDefaultData = functions.runWith({ timeoutSeconds: 540 }).https.onReq
 
       const defaultData = {
         gemeente: naam,
-        provincie: "Nederland",
+        // Geen provincie-veld meer: hier stond letterlijk "Nederland", wat geen
+        // provincie is en in de frontend als zodanig getoond werd. Liever geen
+        // waarde dan een onjuiste.
         omgevingsdienst: "Volgens landelijk kader",
         pfoa: { wonen: 7, industrie: 7, landbouwNatuur: 1.9 },
         pfos: { wonen: 3, industrie: 3, landbouwNatuur: 1.4 },

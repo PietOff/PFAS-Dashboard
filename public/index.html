@@ -95,11 +95,23 @@
   .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   .toolbar input { flex: 1 1 260px; width: auto; }
 
-  svg#map { display: block; width: 100%; height: auto; }
-  svg#map path { stroke: var(--stroke-map); stroke-width: 0.55; cursor: pointer; }
+  #map-wrap { position: relative; }
+  svg#map { display: block; width: 100%; height: auto; touch-action: none; cursor: grab; }
+  svg#map.slepen { cursor: grabbing; }
+  .zoom { position: absolute; top: 10px; left: 10px; z-index: 5; display: flex; flex-direction: column; gap: 4px; }
+  .zoom button {
+    width: 34px; height: 34px; padding: 0; font-size: 1.05rem; line-height: 1;
+    border-radius: 8px; background: var(--surface); border: 1px solid var(--border);
+  }
+  /* non-scaling-stroke: zonder dit wordt de rand mee vergroot bij inzoomen en
+     verandert een selectie in een dikke balk. */
+  svg#map path {
+    stroke: var(--stroke-map); stroke-width: 0.8; cursor: pointer;
+    vector-effect: non-scaling-stroke;
+  }
   svg#map path.dim { opacity: 0.2; }
-  svg#map path.sel { stroke: var(--ink-1); stroke-width: 1.6; }
-  svg#map path:focus-visible { outline: none; stroke: var(--ink-1); stroke-width: 2; }
+  svg#map path.sel { stroke: var(--ink-1); stroke-width: 2.5; }
+  svg#map path:focus-visible { outline: none; stroke: var(--ink-1); stroke-width: 3; }
 
   .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; font-size: 0.85rem; }
   .legend span { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-2); }
@@ -159,11 +171,23 @@
       <input type="search" id="zoek" placeholder="Zoek op gemeente of omgevingsdienst…" autocomplete="off" aria-label="Zoek op gemeente of omgevingsdienst">
       <button id="thema">Thema</button>
     </div>
+    <div class="toolbar" style="margin-top:8px">
+      <input type="search" id="adres" placeholder="Of zoek op adres of postcode (bijv. 1012 AB)…" autocomplete="off" aria-label="Zoek op adres of postcode">
+      <button id="adres-knop">Zoek locatie</button>
+    </div>
+    <p class="note" id="adres-uitslag" style="margin:8px 0 0"></p>
   </section>
 
   <section class="card">
     <div id="map-status" class="status">Kaart wordt geladen…</div>
-    <svg id="map" class="hidden" role="img" aria-label="Kaart van Nederlandse gemeenten naar PFAS-beleid"></svg>
+    <div id="map-wrap" class="hidden">
+      <div class="zoom">
+        <button id="zoom-in" aria-label="Inzoomen">+</button>
+        <button id="zoom-uit" aria-label="Uitzoomen">−</button>
+        <button id="zoom-reset" aria-label="Hele kaart tonen">⤢</button>
+      </div>
+      <svg id="map" role="img" aria-label="Kaart van Nederlandse gemeenten naar PFAS-beleid"></svg>
+    </div>
     <div class="legend" id="legend"></div>
   </section>
 
@@ -314,10 +338,86 @@
   }
 
   // ---------------- kaart ----------------
+  // Beeldvenster van de kaart; wordt aangepast door zoomen en slepen.
+  let vb = null;
+  const zetVb = () => el('map').setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+
+  function zoom(factor, cx, cy) {
+    if (!vb) return;
+    const nw = Math.min(vb.vol.w, Math.max(vb.vol.w / 40, vb.w * factor));
+    const nh = nw * (vb.vol.h / vb.vol.w);
+    // Zoom rond het aangewezen punt in plaats van rond de linkerbovenhoek.
+    vb.x += (cx - vb.x) * (1 - nw / vb.w);
+    vb.y += (cy - vb.y) * (1 - nh / vb.h);
+    vb.w = nw; vb.h = nh;
+    begrens();
+    zetVb();
+  }
+  function begrens() {
+    vb.x = Math.max(0, Math.min(vb.x, vb.vol.w - vb.w));
+    vb.y = Math.max(0, Math.min(vb.y, vb.vol.h - vb.h));
+  }
+  function svgPunt(e) {
+    const r = el('map').getBoundingClientRect();
+    return [vb.x + ((e.clientX - r.left) / r.width) * vb.w,
+            vb.y + ((e.clientY - r.top) / r.height) * vb.h];
+  }
+
+  function koppelZoom() {
+    const svg = el('map');
+    svg.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const [cx, cy] = svgPunt(e);
+      zoom(e.deltaY > 0 ? 1.2 : 1 / 1.2, cx, cy);
+    }, { passive: false });
+
+    let sleep = null;
+    svg.addEventListener('pointerdown', (e) => {
+      sleep = { x: e.clientX, y: e.clientY, vx: vb.x, vy: vb.y, bewogen: false };
+      svg.setPointerCapture(e.pointerId);
+      svg.classList.add('slepen');
+    });
+    svg.addEventListener('pointermove', (e) => {
+      if (!sleep) return;
+      const r = svg.getBoundingClientRect();
+      const dx = (e.clientX - sleep.x) / r.width * vb.w;
+      const dy = (e.clientY - sleep.y) / r.height * vb.h;
+      if (Math.abs(e.clientX - sleep.x) + Math.abs(e.clientY - sleep.y) > 4) sleep.bewogen = true;
+      vb.x = sleep.vx - dx; vb.y = sleep.vy - dy;
+      begrens(); zetVb();
+    });
+    const stop = () => { svg.classList.remove('slepen'); sleep = null; };
+    svg.addEventListener('pointerup', stop);
+    svg.addEventListener('pointercancel', stop);
+    // Een sleep mag geen gemeente selecteren.
+    svg.addEventListener('click', (e) => { if (sleep && sleep.bewogen) e.stopPropagation(); }, true);
+
+    el('zoom-in').addEventListener('click', () => zoom(1 / 1.4, vb.x + vb.w / 2, vb.y + vb.h / 2));
+    el('zoom-uit').addEventListener('click', () => zoom(1.4, vb.x + vb.w / 2, vb.y + vb.h / 2));
+    el('zoom-reset').addEventListener('click', () => {
+      vb.x = 0; vb.y = 0; vb.w = vb.vol.w; vb.h = vb.vol.h; zetVb();
+    });
+  }
+
+  // Zoom in op de bounding box van een gemeente, zodat zoeken ook op de kaart
+  // iets doet in plaats van alleen in het detailpaneel.
+  function zoomNaar(pad) {
+    if (!vb || !pad) return;
+    const b = pad.getBBox();
+    const marge = Math.max(b.width, b.height) * 1.8 + 12;
+    const w = Math.min(vb.vol.w, marge);
+    const h = w * (vb.vol.h / vb.vol.w);
+    vb.w = w; vb.h = h;
+    vb.x = b.x + b.width / 2 - w / 2;
+    vb.y = b.y + b.height / 2 - h / 2;
+    begrens(); zetVb();
+  }
+
   function tekenKaart(features) {
     const pr = maakProjectie(features);
     const svg = el('map');
-    svg.setAttribute('viewBox', `0 0 ${pr.W} ${pr.H.toFixed(0)}`);
+    vb = { x: 0, y: 0, w: pr.W, h: pr.H, vol: { w: pr.W, h: pr.H } };
+    zetVb();
     svg.innerHTML =
       '<defs><pattern id="hatch" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">' +
       '<rect width="6" height="6" fill="var(--afwijkend)"></rect>' +
@@ -350,7 +450,8 @@
       paden.push(p);
     }
     el('map-status').classList.add('hidden');
-    svg.classList.remove('hidden');
+    el('map-wrap').classList.remove('hidden');
+    koppelZoom();
   }
   function tip(e, naam, label) {
     const t = el('tooltip');
@@ -371,6 +472,12 @@
   function kies(id, naam) {
     for (const p of paden) p.classList.toggle('sel', p.dataset.id === id);
     const rec = perId.get(id);
+    // Deelbare link: ?gemeente=utrecht opent het dashboard op die gemeente.
+    try {
+      const u = new URL(location.href);
+      u.searchParams.set('gemeente', id);
+      history.replaceState(null, '', u);
+    } catch { /* niet kritiek */ }
     el('detail-titel').textContent = rec ? (rec.gemeente || naam) : naam;
 
     if (!rec) {
@@ -505,6 +612,41 @@
     }).join('');
   }
 
+  // Adres/postcode -> gemeente, via de Locatieserver van PDOK. Die is publiek
+  // en vraagt geen sleutel. Lukt het niet, dan blijft de rest gewoon werken.
+  const LOCATIESERVER =
+    'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free' +
+    '?fq=type:(adres OR postcode OR woonplaats OR weg)&rows=1&fl=weergavenaam,gemeentenaam&q=';
+
+  async function zoekAdres() {
+    const q = el('adres').value.trim();
+    const uit = el('adres-uitslag');
+    if (!q) { uit.textContent = ''; return; }
+
+    uit.textContent = 'Zoeken…';
+    try {
+      const r = await fetch(LOCATIESERVER + encodeURIComponent(q));
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+      const doc = d && d.response && d.response.docs && d.response.docs[0];
+      if (!doc || !doc.gemeentenaam) {
+        uit.textContent = 'Geen locatie gevonden voor "' + q + '".';
+        return;
+      }
+      const id = toId(doc.gemeentenaam);
+      const rec = perId.get(id);
+      uit.innerHTML = `${esc(doc.weergavenaam)} ligt in gemeente <strong>${esc(doc.gemeentenaam)}</strong>.` +
+        (rec ? '' : ' Voor die gemeente staan nog geen normen in de database.');
+      if (rec) {
+        kies(id, doc.gemeentenaam);
+        const pad = paden.find(p => p.dataset.id === id);
+        if (pad) { zoomNaar(pad); pad.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      }
+    } catch (e) {
+      uit.textContent = 'Adres zoeken lukte niet (' + e.message + '). Gebruik het zoekveld op gemeentenaam.';
+    }
+  }
+
   function zoek(term) {
     const q = term.trim().toLowerCase();
     for (const p of paden) {
@@ -515,7 +657,9 @@
     }
     if (q) {
       const t = paden.find(p => p.dataset.naam.toLowerCase().startsWith(q));
-      if (t) kies(t.dataset.id, t.dataset.naam);
+      if (t) { kies(t.dataset.id, t.dataset.naam); zoomNaar(t); }
+    } else if (vb) {
+      vb.x = 0; vb.y = 0; vb.w = vb.vol.w; vb.h = vb.vol.h; zetVb();
     }
   }
 
@@ -548,6 +692,12 @@
       const { data, bron } = await haalGeo();
       tekenKaart(data.features);
       console.info('Gemeentegrenzen via: ' + bron);
+
+      const gevraagd = new URL(location.href).searchParams.get('gemeente');
+      if (gevraagd) {
+        const pad = paden.find(p => p.dataset.id === gevraagd);
+        if (pad) { kies(pad.dataset.id, pad.dataset.naam); zoomNaar(pad); }
+      }
     } catch (e) {
       el('map-status').className = 'status err';
       el('map-status').textContent =
@@ -556,6 +706,8 @@
   }
 
   el('zoek').addEventListener('input', e => zoek(e.target.value));
+  el('adres-knop').addEventListener('click', zoekAdres);
+  el('adres').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); zoekAdres(); } });
   el('thema').addEventListener('click', () => {
     const nu = document.documentElement.getAttribute('data-theme');
     const donker = nu ? nu === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
