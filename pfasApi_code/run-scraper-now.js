@@ -3,12 +3,17 @@ const { runWeeklyScraper } = require('./scraper');
 
 if (!admin.apps.length) {
   admin.initializeApp({
-    projectId: 'pfas-dashboard-nl-a808d'
+    projectId: process.env.GCLOUD_PROJECT || 'pfas-dashboard-nl-a808d'
   });
 }
 const db = admin.firestore();
 
-process.env.GEMINI_API_KEY = "AIzaSyCU8parcxaNCPxZQ8QKy5uxCQRt8rJgLkc";
+// De API-sleutel hoort NIET in de repo. Meegeven via de omgeving:
+//   GEMINI_API_KEY=... node run-scraper-now.js
+if (!process.env.GEMINI_API_KEY) {
+  console.error('GEMINI_API_KEY ontbreekt. Start met: GEMINI_API_KEY=... node run-scraper-now.js');
+  process.exit(1);
+}
 
 console.log("Handmatig de AI Scraper starten...");
 runWeeklyScraper(db).then(() => {

@@ -1,0 +1,17 @@
+node_modules/
+
+# Nooit committen: bevatten credentials
+serviceAccountKey.json
+.env
+.env.*
+!.env.example
+
+# Firebase
+# .runtimeconfig.json is de lokale dump van `firebase functions:config:get`.
+# Nu staat er alleen een projectId in, maar dit bestand is er juist voor bedoeld
+# om functions-config te bevatten — en dat zijn doorgaans API-sleutels.
+.runtimeconfig.json
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+*-debug.log

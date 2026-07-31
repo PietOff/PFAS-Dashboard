@@ -2,6 +2,14 @@ const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const express = require('express');
 const cors = require('cors');
+const { runWeeklyScraper } = require('./scraper');
+const { toDocId } = require('./docId');
+const { haalGemeenteLijst } = require('./gemeentelijst');
+
+// Landelijk kader bij het Informatiepunt Leefomgeving (opvolger van bodemplus.nl).
+const LANDELIJK_KADER_LINK =
+  'https://iplo.nl/thema/bodem/regelgeving/hergebruik-bouwstoffen-grond-of-baggerspecie/' +
+  'kwaliteitseisen-toepassen-grond-baggerspecie/handelingskader-pfas/';
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -21,7 +29,7 @@ const fallbackData = [
     genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 0.8 },
     laatstGeupdate: "2024-01-15",
     opmerkingen: "Volgt landelijk Handelingskader voor grondverzet. Kaarten en details via DCMR bodemloket.",
-    bronLink: "https://www.dcmr.nl/bodem/pfas"
+    bronLink: "https://www.dcmr.nl/pfas-in-de-bodem"
   },
   {
     id: "2",
@@ -33,7 +41,7 @@ const fallbackData = [
     genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 0.8 },
     laatstGeupdate: "2025-01-01",
     opmerkingen: "Nieuwe Bodemkwaliteitskaart in 2025 vastgesteld. Let op: alle PFAS gelden als ZZS.",
-    bronLink: "https://odnzkg.nl/themas/bodem/pfas/"
+    bronLink: "https://odnzkg.nl/kaarten/pfas-bodemkwaliteitskaart/"
   },
   {
     id: "3",
@@ -45,7 +53,7 @@ const fallbackData = [
     genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 0.8 },
     laatstGeupdate: "2024-05-12",
     opmerkingen: "Volgt landelijk handelingskader (update dec 2023).",
-    bronLink: "https://odbn.nl/pfas/"
+    bronLink: "https://odbn.nl/expertises/bodem/pfas"
   }
 ];
 
@@ -70,7 +78,7 @@ app.get(['/v1/gemeenten', '/api/v1/gemeenten'], async (req, res) => {
           "genx": { "wonen": 3, "industrie": 3, "landbouwNatuur": 0.8 },
           "laatstGeupdate": "2024-01-15",
           "opmerkingen": "Volgt landelijk Handelingskader voor grondverzet.",
-          "bronLink": "https://www.dcmr.nl/bodem/pfas"
+          "bronLink": "https://www.dcmr.nl/pfas-in-de-bodem"
         },
         {
           "id": "2",
@@ -82,7 +90,7 @@ app.get(['/v1/gemeenten', '/api/v1/gemeenten'], async (req, res) => {
           "genx": { "wonen": 3, "industrie": 3, "landbouwNatuur": 0.8 },
           "laatstGeupdate": "2025-10-06",
           "opmerkingen": "Bodemkwaliteitskaart Amsterdam (ACN) 2025 vastgesteld.",
-          "bronLink": "https://odnzkg.nl/themas/bodem/pfas/"
+          "bronLink": "https://odnzkg.nl/kaarten/pfas-bodemkwaliteitskaart/"
         },
         {
           "id": "3",
@@ -94,7 +102,7 @@ app.get(['/v1/gemeenten', '/api/v1/gemeenten'], async (req, res) => {
           "genx": { "wonen": 3, "industrie": 3, "landbouwNatuur": 0.8 },
           "laatstGeupdate": "2024-05-12",
           "opmerkingen": "Volgt landelijk handelingskader.",
-          "bronLink": "https://odbn.nl/pfas/"
+          "bronLink": "https://odbn.nl/expertises/bodem/pfas"
         }
       ];
     }
@@ -153,9 +161,95 @@ app.get(['/v1/signalen', '/api/v1/signalen'], async (req, res) => {
   }
 });
 
+// Gemeenten waar een mogelijke afwijking is gevonden die nog niet geverifieerd
+// is. Deze tonen in het dashboard het landelijk kader, maar het besluit dat de
+// twijfel veroorzaakte staat erbij. Dit is de werkvoorraad voor handmatige
+// review — laat hem niet vollopen.
+app.get(['/v1/te-reviewen', '/api/v1/te-reviewen'], async (req, res) => {
+  try {
+    const snapshot = await db.collection('pfasData').where('tereviewen', '==', true).get();
+    const data = [];
+    snapshot.forEach(doc => {
+      const d = doc.data();
+      data.push({
+        id: doc.id,
+        gemeente: d.gemeente,
+        herkomst: d.herkomst,
+        bronLink: d.bronLink,
+        bronDocument: d.bronDocument,
+        bronDocumentTitel: d.bronDocumentTitel,
+        bronDocumentDatum: d.bronDocumentDatum,
+        mogelijkeWaarden: d.mogelijkeWaarden || null
+      });
+    });
+    res.json(data);
+  } catch (error) {
+    console.error('Error getting te-reviewen', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 exports.pfasApi = functions.https.onRequest(app);
 
-const { checkOfficieleBekendmakingen } = require('./checkBekendmakingen');
+const { checkOfficieleBekendmakingen, sweepBekendmakingen, herbouwAfwijkingen } = require('./checkBekendmakingen');
+
+// ============================================================
+// WEKELIJKSE SWEEP: alle PFAS-bekendmakingen
+// ============================================================
+// Draait elke maandag om 03:00. Haalt alle gemeentebladen op die sinds de
+// vorige geslaagde run zijn gepubliceerd, verwerkt nieuwe documenten met de AI
+// en herberekent daarna per gemeente of er afwijkend beleid geldt.
+//
+// Elk document wordt maar één keer door de AI gehaald, dus een wekelijkse run
+// kost alleen API-calls voor wat er nieuw bij is gekomen.
+exports.weeklyBekendmakingenSweep = functions
+  .runWith({ timeoutSeconds: 540, memory: '512MB', secrets: ["GEMINI_API_KEY"] })
+  .pubsub
+  .schedule('0 3 * * 1')
+  .timeZone('Europe/Amsterdam')
+  .onRun(async () => {
+    const resultaat = await sweepBekendmakingen(db);
+    console.log('Wekelijkse sweep afgerond:', JSON.stringify(resultaat));
+    return null;
+  });
+
+// Handmatige sweep / backfill.
+//   ?vanaf=2019-01-01   ondergrens (standaard: watermerk van de vorige run)
+//   ?max=200            rem op het aantal nieuwe AI-extracties in deze run
+//   ?forceer=true       alle documenten opnieuw analyseren
+//
+// De eerste keer draai je dit met een vroege vanaf-datum om het corpus op te
+// bouwen. Omdat verwerkte documenten worden onthouden, kun je de functie
+// gewoon opnieuw aanroepen tot alles binnen is — hij pakt op waar hij bleef.
+exports.sweepBekendmakingenNow = functions
+  .runWith({ timeoutSeconds: 540, memory: '512MB', secrets: ["GEMINI_API_KEY"] })
+  .https.onRequest(async (req, res) => {
+    try {
+      const resultaat = await sweepBekendmakingen(db, {
+        vanaf: req.query.vanaf,
+        forceer: req.query.forceer === 'true',
+        maxDocumenten: parseInt(req.query.max) || 200
+      });
+      res.json({ succes: true, resultaat });
+    } catch (error) {
+      console.error('Sweep gefaald:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+// Herberekent alleen de afgeleide toestand per gemeente uit het al opgebouwde
+// documentcorpus. Geen AI-calls, geen netwerk — handig na het handmatig
+// corrigeren van een document.
+exports.herbouwAfwijkingenNow = functions
+  .runWith({ timeoutSeconds: 300 })
+  .https.onRequest(async (req, res) => {
+    try {
+      res.json({ succes: true, resultaat: await herbouwAfwijkingen(db) });
+    } catch (error) {
+      console.error('Herbouw gefaald:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
 // ============================================================
 // NACHTELIJKE CHECK: Officiële Bekendmakingen (overheid.nl)
@@ -218,21 +312,21 @@ exports.runScraperNow = functions.runWith({ timeoutSeconds: 540, secrets: ["GEMI
 // Tijdelijke HTTPS trigger om alle gemeenten te vullen met landelijk kader
 exports.fillDefaultData = functions.runWith({ timeoutSeconds: 540 }).https.onRequest(async (req, res) => {
   try {
-    const axios = require('axios');
-    const response = await axios.get('https://pfas-dashboard-nl-a808d.web.app/gemeenten.geojson');
-    const features = response.data.features;
-    
+    const lijst = await haalGemeenteLijst();
+    console.log(`Gemeentelijst via: ${lijst.bron} (${lijst.gemeenten.length} gemeenten)`);
+
     let count = 0;
     const batchArray = [];
     let currentBatch = db.batch();
-    
-    for (const feature of features) {
-      const naam = feature.properties.statnaam;
+
+    for (const naam of lijst.gemeenten) {
       if (!naam) continue;
-      
+
       const defaultData = {
         gemeente: naam,
-        provincie: "Nederland",
+        // Geen provincie-veld meer: hier stond letterlijk "Nederland", wat geen
+        // provincie is en in de frontend als zodanig getoond werd. Liever geen
+        // waarde dan een onjuiste.
         omgevingsdienst: "Volgens landelijk kader",
         pfoa: { wonen: 7, industrie: 7, landbouwNatuur: 1.9 },
         pfos: { wonen: 3, industrie: 3, landbouwNatuur: 1.4 },
@@ -240,10 +334,13 @@ exports.fillDefaultData = functions.runWith({ timeoutSeconds: 540 }).https.onReq
         heeftAfwijkendBeleid: false,
         laatstGeupdate: new Date().toISOString().split('T')[0],
         opmerkingen: "Geen specifiek lokaal beleid geüploaded; toont Tijdelijk Handelingskader PFAS (RIVM). Raadpleeg de regionale Omgevingsdienst voor actuele lokale regels.",
-        bronLink: "https://www.bodemplus.nl/onderwerpen/wet-regelgeving/rubrieken/pfas/handelingskader/"
+        // bodemplus.nl is opgevolgd door het Informatiepunt Leefomgeving.
+        // migrate-links.js bestaat juist om die oude link weg te werken; hier
+        // werd hij daarna telkens opnieuw ingezet.
+        bronLink: LANDELIJK_KADER_LINK
       };
 
-      const docRef = db.collection('pfasData').doc(naam.toLowerCase().replace(/\\s+/g, '-'));
+      const docRef = db.collection('pfasData').doc(toDocId(naam));
       currentBatch.set(docRef, defaultData, { merge: true });
       count++;
       
@@ -268,71 +365,11 @@ exports.fillDefaultData = functions.runWith({ timeoutSeconds: 540 }).https.onReq
   }
 });
 
-// Mapping van alle Omgevingsdiensten naar hun PFAS/bodem pagina
-// Keys = exact zoals opgeslagen in Firestore (case-insensitive matching)
-const OD_LINK_MAP = {
-  // Zuid-Holland
-  'DCMR': 'https://www.dcmr.nl/over-dcmr/thema-s/bodem/pfas.html',
-  'DCMR Milieudienst Rijnmond': 'https://www.dcmr.nl/over-dcmr/thema-s/bodem/pfas.html',
-  'Omgevingsdienst Midden-Holland': 'https://www.odmh.nl/themas/bodem/bodemkwaliteitskaart/',
-  'ODMH': 'https://www.odmh.nl/themas/bodem/bodemkwaliteitskaart/',
-  'OZHZ': 'https://www.ozhz.nl/themas/bodem/pfas/',
-  'OZHZ (Omgevingsdienst Zuid-Holland Zuid)': 'https://www.ozhz.nl/themas/bodem/pfas/',
-  'Omgevingsdienst Zuid-Holland Zuid': 'https://www.ozhz.nl/themas/bodem/pfas/',
-  'Omgevingsdienst Haaglanden': 'https://www.odh.nl/themas/bodem',
-  'ODH': 'https://www.odh.nl/themas/bodem',
-  'ODWH': 'https://www.odwh.nl/themas/bodem',
-  // Noord-Holland
-  'ODNZKG': 'https://odnzkg.nl/themas/bodem/pfas/',
-  'Omgevingsdienst Noordzeekanaalgebied': 'https://odnzkg.nl/themas/bodem/pfas/',
-  'OD NZKG': 'https://odnzkg.nl/themas/bodem/pfas/',
-  'Omgevingsdienst IJmond': 'https://www.odijmond.nl/themas/bodem',
-  'ODIJ': 'https://www.odijmond.nl/themas/bodem',
-  // Utrecht
-  'ODRU': 'https://www.odru.nl/themas/bodem',
-  'Omgevingsdienst Utrecht': 'https://www.odru.nl/themas/bodem',
-  'Omgevingsdienst Utrecht (ODU)': 'https://www.odru.nl/themas/bodem',
-  'Omgevingsdienst Utrecht (voorheen Omgevingsdienst Regio Utrecht - ODRU)': 'https://www.odru.nl/themas/bodem',
-  'RUD Utrecht': 'https://www.odru.nl/themas/bodem',
-  // Noord-Brabant
-  'ODBN': 'https://www.odbn.nl/bodem-en-water/pfas',
-  'Omgevingsdienst Brabant Noord': 'https://www.odbn.nl/bodem-en-water/pfas',
-  'ODZOB': 'https://www.odzob.nl/themas/bodem',
-  'Omgevingsdienst Brabant Zuidoost': 'https://www.odzob.nl/themas/bodem',
-  'OMWB': 'https://www.omwb.nl/themas/bodem/pfas',
-  'Omgevingsdienst Midden- en West-Brabant': 'https://www.omwb.nl/themas/bodem/pfas',
-  // Gelderland
-  'ODRN': 'https://www.odrn.nl/themas/bodem',
-  'Omgevingsdienst Regio Nijmegen': 'https://www.odrn.nl/themas/bodem',
-  'Omgevingsdienst Rivierenland': 'https://www.odrivierenland.nl/themas/bodem',
-  'ODA': 'https://www.omgevingsdienstachterhoek.nl/themas/bodem',
-  'Omgevingsdienst Achterhoek': 'https://www.omgevingsdienstachterhoek.nl/themas/bodem',
-  'Omgevingsdienst Veluwe IJssel': 'https://www.odvij.nl/themas/bodem',
-  // Overijssel
-  'Omgevingsdienst IJsselland': 'https://www.odijsselland.nl/themas/bodem',
-  'OT': 'https://www.omgevingsdiensttwente.nl/themas/bodem',
-  'Omgevingsdienst Twente': 'https://www.omgevingsdiensttwente.nl/themas/bodem',
-  // Friesland
-  'FUMO': 'https://www.fumo.nl/themas/bodem',
-  'Omgevingsdienst Fryske Utfieringstsjinst Miljeu en Omjouwing (FUMO)': 'https://www.fumo.nl/themas/bodem',
-  'Fryske Utfieringstsjinst Miljeu en Omjouwing': 'https://www.fumo.nl/themas/bodem',
-  // Groningen
-  'Omgevingsdienst Groningen': 'https://www.omgevingsdienst.nl/themas/bodem',
-  'ODG': 'https://www.omgevingsdienst.nl/themas/bodem',
-  // Drenthe
-  'RUD Drenthe': 'https://www.rudrenthe.nl/themas/bodem',
-  'Omgevingsdienst Drenthe': 'https://www.rudrenthe.nl/themas/bodem',
-  'Milieu Adviesbureau Drenthe': 'https://www.rudrenthe.nl/themas/bodem',
-  // Flevoland
-  'OFGV': 'https://www.ofgv.nl/themas/bodem',
-  'Omgevingsdienst Flevoland & Gooi en Vechtstreek': 'https://www.ofgv.nl/themas/bodem',
-  // Limburg
-  'RUD Zuid-Limburg': 'https://www.rudzl.nl/themas/bodem',
-  'Omgevingsdienst Noord- en Midden-Limburg': 'https://www.odnl.nl/themas/bodem',
-  'ODNL': 'https://www.odnl.nl/themas/bodem',
-  // Zeeland
-  'RUD Zeeland': 'https://www.rudzeeland.nl/themas/bodem',
-};
+// OD_LINK_MAP is hier verwijderd: die tabel werd nergens gebruikt en bevatte
+// dezelfde ongeverifieerde URL's als gemeente_mapping.json (o.a. rudrenthe.nl
+// terwijl het domein oddrenthe.nl is). Dode code met foute data leidt de
+// volgende lezer alleen maar om de tuin. gemeente_mapping.json is de enige
+// bron voor bronlinks.
 
 const gemeenteMapping = require('./gemeente_mapping.json');
 
@@ -343,9 +380,12 @@ exports.fixLinks = functions.runWith({ timeoutSeconds: 540 }).https.onRequest(as
     const snapshot = await db.collection('pfasData').get();
     let fixedValues = 0;
     let fixedLinks = 0;
-    
-    const batch = db.batch();
-    
+
+    // Firestore staat maximaal 500 schrijfacties per batch toe. Met ~342
+    // gemeenten (en meer zodra er dubbele documenten in staan) liep één enkele
+    // batch daar overheen en faalde de hele functie.
+    const updates = [];
+
     snapshot.forEach(doc => {
       const data = doc.data();
       const gemeente = data.gemeente || doc.id;
@@ -399,15 +439,240 @@ exports.fixLinks = functions.runWith({ timeoutSeconds: 540 }).https.onRequest(as
       }
       
       // 3. Update het document
-      batch.update(doc.ref, correcteWaarden);
+      updates.push({ ref: doc.ref, data: correcteWaarden });
       fixedValues++;
     });
-    
-    await batch.commit();
+
+    const BATCH_LIMIET = 400;
+    for (let i = 0; i < updates.length; i += BATCH_LIMIET) {
+      const batch = db.batch();
+      for (const u of updates.slice(i, i + BATCH_LIMIET)) {
+        batch.update(u.ref, u.data);
+      }
+      await batch.commit();
+    }
     res.send(`Succes! ${fixedValues} gemeenten gereset naar correcte hardcoded PFAS waarden. ${fixedLinks} bronlinks bijgewerkt. (${snapshot.size} totaal)`);
   } catch (error) {
     console.error("Fout bij fixen data:", error);
     res.status(500).send("Fout: " + error.message);
+  }
+});
+
+// ============================================================
+// AUDIT: is de dataset compleet en plausibel?
+// ============================================================
+// Vergelijkt Firestore met de canonieke gemeentelijst en rapporteert elk gat.
+// Dit is de enige manier om te kúnnen zeggen dat alle gemeenten verwerkt zijn;
+// "de scraper is gedraaid zonder fouten" bewijst dat niet.
+//
+// Schrijft niets. Bedoeld om na elke scraper-run te draaien en om in de gaten
+// te houden of de dekking niet stilletjes wegzakt.
+exports.auditData = functions.runWith({ timeoutSeconds: 300 }).https.onRequest(async (req, res) => {
+  const maxDagenOud = parseInt(req.query.maxDagen) || 90;
+
+  try {
+    const lijst = await haalGemeenteLijst();
+    const canoniek = new Map(lijst.gemeenten.map(n => [toDocId(n), n]));
+
+    const snapshot = await db.collection('pfasData').get();
+
+    const inDb = new Map();
+    const dubbeleIds = [];
+    const verdachteWaarden = [];
+    const zwakkeBronnen = [];
+    const verouderd = [];
+    let afwijkendBeleid = 0;
+    let teReviewen = 0;
+    const herkomst = {};
+
+    const vandaag = new Date();
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const naam = data.gemeente || doc.id;
+      const id = toDocId(naam);
+
+      if (doc.id !== id) dubbeleIds.push({ docId: doc.id, zouMoetenZijn: id });
+      inDb.set(id, data);
+
+      if (data.heeftAfwijkendBeleid === true) afwijkendBeleid++;
+      if (data.tereviewen === true) teReviewen++;
+      herkomst[data.herkomst || 'onbekend'] = (herkomst[data.herkomst || 'onbekend'] || 0) + 1;
+
+      // Waarden plausibel?
+      for (const stof of ['pfos', 'pfoa', 'genx']) {
+        const w = data[stof];
+        if (!w) {
+          verdachteWaarden.push({ gemeente: naam, probleem: `${stof} ontbreekt volledig` });
+          continue;
+        }
+        for (const klasse of ['wonen', 'industrie', 'landbouwNatuur']) {
+          const v = w[klasse];
+          if (typeof v !== 'number' || !Number.isFinite(v)) {
+            verdachteWaarden.push({ gemeente: naam, probleem: `${stof}.${klasse} is geen getal (${v})` });
+          } else if (v <= 0 || v > 50) {
+            verdachteWaarden.push({ gemeente: naam, probleem: `${stof}.${klasse} = ${v} (buiten 0-50)` });
+          }
+        }
+      }
+
+      // Bronlink bruikbaar?
+      const link = data.bronLink;
+      if (!link) {
+        zwakkeBronnen.push({ gemeente: naam, probleem: 'geen bronLink' });
+      } else if (link.includes('google.com/search')) {
+        zwakkeBronnen.push({ gemeente: naam, probleem: 'bronLink is een Google-zoekopdracht' });
+      } else {
+        try {
+          const pad = new URL(link).pathname;
+          if (pad === '' || pad === '/') {
+            zwakkeBronnen.push({ gemeente: naam, probleem: 'bronLink is alleen een homepage, geen PFAS-pagina' });
+          }
+        } catch {
+          zwakkeBronnen.push({ gemeente: naam, probleem: `bronLink is geen geldige URL (${link})` });
+        }
+      }
+
+      // Hoe oud is de laatste update?
+      if (data.laatstGeupdate) {
+        const dagen = Math.floor((vandaag - new Date(data.laatstGeupdate)) / 86400000);
+        if (Number.isFinite(dagen) && dagen > maxDagenOud) {
+          verouderd.push({ gemeente: naam, laatstGeupdate: data.laatstGeupdate, dagenOud: dagen });
+        }
+      } else {
+        verouderd.push({ gemeente: naam, laatstGeupdate: null, dagenOud: null });
+      }
+    });
+
+    const ontbrekend = [...canoniek.entries()]
+      .filter(([id]) => !inDb.has(id))
+      .map(([, naam]) => naam);
+
+    const verweesd = [...inDb.keys()]
+      .filter(id => !canoniek.has(id))
+      .map(id => (inDb.get(id).gemeente || id));
+
+    const dekking = canoniek.size > 0
+      ? Math.round(((canoniek.size - ontbrekend.length) / canoniek.size) * 1000) / 10
+      : 0;
+
+    res.json({
+      samenvatting: {
+        gemeentenVolgensBron: canoniek.size,
+        documentenInFirestore: snapshot.size,
+        dekkingProcent: dekking,
+        ontbrekend: ontbrekend.length,
+        verweesd: verweesd.length,
+        dubbeleIds: dubbeleIds.length,
+        verdachteWaarden: verdachteWaarden.length,
+        zwakkeBronlinks: zwakkeBronnen.length,
+        verouderd: verouderd.length,
+        metAfwijkendBeleid: afwijkendBeleid,
+        teReviewen
+      },
+      // Waar komt het getal per gemeente vandaan? 'landelijk-kader-aanname'
+      // betekent: geen officieel document gevonden, landelijk kader aangenomen.
+      // Dat is geen vaststelling en hoort in de UI ook niet zo te ogen.
+      herkomst,
+      bron: lijst.bron,
+      bronWaarschuwingen: lijst.waarschuwingen,
+      // Gemeenten die de canonieke lijst wel kent maar Firestore niet
+      ontbrekendeGemeenten: ontbrekend,
+      // Documenten voor gemeenten die niet meer bestaan (bijv. na een herindeling)
+      verweesdeDocumenten: verweesd,
+      dubbeleIds,
+      verdachteWaarden,
+      zwakkeBronlinks: zwakkeBronnen,
+      verouderdeDocumenten: verouderd.sort((a, b) => (b.dagenOud || 1e9) - (a.dagenOud || 1e9)).slice(0, 50)
+    });
+
+  } catch (error) {
+    console.error('Audit gefaald:', error);
+    res.status(500).json({ error: error.message, waarschuwingen: error.waarschuwingen });
+  }
+});
+
+
+// ============================================================
+// OPRUIMEN: dubbele documenten samenvoegen
+// ============================================================
+// fillDefaultData en syncSheet gebruikten `/\\s+/g` in plaats van `/\s+/g`.
+// Die regex matcht een letterlijke backslash, geen spatie, dus kreeg elke
+// gemeente met een spatie in de naam twee documenten:
+//   "bergen op zoom"  (fillDefaultData / syncSheet)
+//   "bergen-op-zoom"  (scraper / checkBekendmakingen)
+//
+// De code schrijft nu overal hetzelfde id, maar de dubbelen die al in
+// Firestore staan blijven bestaan. Deze functie voegt ze samen.
+//
+// Standaard is dit een DROOGLOOP die alleen rapporteert wat er zou gebeuren.
+// Pas met ?apply=true worden documenten daadwerkelijk samengevoegd en verwijderd.
+exports.mergeDuplicateDocs = functions.runWith({ timeoutSeconds: 540 }).https.onRequest(async (req, res) => {
+  const apply = req.query.apply === 'true';
+
+  try {
+    const snapshot = await db.collection('pfasData').get();
+
+    // Groepeer alle documenten op hun canonieke id
+    const perCanoniekId = new Map();
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const canoniek = toDocId(data.gemeente || doc.id);
+      if (!canoniek) return;
+      if (!perCanoniekId.has(canoniek)) perCanoniekId.set(canoniek, []);
+      perCanoniekId.get(canoniek).push({ id: doc.id, ref: doc.ref, data });
+    });
+
+    const acties = [];
+
+    for (const [canoniek, docs] of perCanoniekId) {
+      const strays = docs.filter(d => d.id !== canoniek);
+      if (strays.length === 0) continue;
+
+      const canoniekeDoc = docs.find(d => d.id === canoniek);
+
+      // Handmatige overschrijvingen (via Google Sheets) winnen altijd, daarna
+      // het canonieke document, daarna de rest.
+      const prioriteit = [...docs].sort((a, b) => {
+        if (a.data.handmatigeOverschrijving !== b.data.handmatigeOverschrijving) {
+          return a.data.handmatigeOverschrijving ? -1 : 1;
+        }
+        if ((a.id === canoniek) !== (b.id === canoniek)) return a.id === canoniek ? -1 : 1;
+        return String(b.data.laatstGeupdate || '').localeCompare(String(a.data.laatstGeupdate || ''));
+      });
+
+      // Minst belangrijke eerst samenvoegen, zodat de belangrijkste bovenop komt
+      const samengevoegd = {};
+      for (const d of [...prioriteit].reverse()) {
+        Object.assign(samengevoegd, d.data);
+      }
+      samengevoegd.gemeente = samengevoegd.gemeente || canoniek;
+
+      acties.push({
+        canoniek,
+        behoudt: canoniek,
+        verwijdert: strays.map(s => s.id),
+        canoniekBestondAl: Boolean(canoniekeDoc)
+      });
+
+      if (apply) {
+        await db.collection('pfasData').doc(canoniek).set(samengevoegd, { merge: true });
+        for (const stray of strays) {
+          await stray.ref.delete();
+        }
+      }
+    }
+
+    res.json({
+      modus: apply ? 'UITGEVOERD' : 'DROOGLOOP (voeg ?apply=true toe om door te voeren)',
+      documentenTotaal: snapshot.size,
+      gemeentenMetDubbelen: acties.length,
+      documentenTeVerwijderen: acties.reduce((n, a) => n + a.verwijdert.length, 0),
+      details: acties
+    });
+  } catch (error) {
+    console.error('Fout bij samenvoegen dubbelen:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

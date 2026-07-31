@@ -1,35 +1,33 @@
-const { analyzeWithGemini } = require('./scraper.js');
-const admin = require('firebase-admin');
+/**
+ * Handmatige check: wat vindt de AI-scan voor één gemeente?
+ *
+ * Dit script riep eerder `analyzeWithGemini` aan, een functie die scraper.js
+ * nooit geëxporteerd heeft — het faalde dus altijd meteen. Het gebruikt nu
+ * scanForNewPolicy, dezelfde functie die de scraper zelf draait.
+ *
+ * Gebruik: GEMINI_API_KEY=... node test-dordrecht.js [gemeentenaam]
+ *
+ * Let op: dit schrijft NIETS naar Firestore. De AI-scan is bewust alleen een
+ * signaalgever — de waarden in pfas_normen.json blijven leidend. De oude versie
+ * schreef het AI-antwoord rechtstreeks naar het document 'Dordrecht' (met
+ * hoofdletter, dus ook nog eens een ander document dan 'dordrecht').
+ */
+const { scanForNewPolicy } = require('./scraper.js');
 
-// Initialize Firebase Admin (using Application Default Credentials if possible, or mock it)
-// Wait, we don't need to write to firestore immediately, let's just log the result of analyzeWithGemini.
+const gemeente = process.argv[2] || 'Dordrecht';
 
 async function test() {
-  try {
-    const result = await analyzeWithGemini('Dordrecht');
-    console.log("AI Result for Dordrecht:");
-    console.log(JSON.stringify(result, null, 2));
-    
-    // Now let's try to update the database
-    // We will initialize firebase if we can
-    const projectId = process.env.FIREBASE_PROJECT_ID || 'pfas-dashboard-nl-a808d';
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        projectId: projectId
-      });
-    }
-    const db = admin.firestore();
-    
-    // Check if the result is valid
-    if (result && result.bronLink) {
-       const docRef = db.collection('pfasData').doc('Dordrecht');
-       await docRef.set(result, { merge: true });
-       console.log("Succesfully updated Dordrecht in Firestore.");
-    }
-    
-  } catch (err) {
-    console.error("Error:", err);
+  if (!process.env.GEMINI_API_KEY) {
+    console.error('GEMINI_API_KEY ontbreekt. Start met: GEMINI_API_KEY=... node test-dordrecht.js');
+    process.exit(1);
   }
+
+  const result = await scanForNewPolicy(gemeente);
+  console.log(`AI-scan resultaat voor ${gemeente}:`);
+  console.log(JSON.stringify(result, null, 2));
 }
 
-test();
+test().catch(err => {
+  console.error('Fout:', err);
+  process.exit(1);
+});

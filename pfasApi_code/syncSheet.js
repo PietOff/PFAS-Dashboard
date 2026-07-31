@@ -1,6 +1,6 @@
 const axios = require('axios');
 const csv = require('csv-parser');
-const stream = require('stream');
+const { toDocId } = require('./docId');
 
 async function syncGoogleSheetToFirestore(db, sheetId) {
   if (!sheetId) {
@@ -26,7 +26,8 @@ async function syncGoogleSheetToFirestore(db, sheetId) {
             const gemeenteNaam = row.gemeente || row.Gemeente;
             if (!gemeenteNaam) continue;
             
-            const docId = gemeenteNaam.toLowerCase().replace(/\\s+/g, '-');
+            const docId = toDocId(gemeenteNaam);
+            if (!docId) continue;
             
             // Bouw het update object
             const updateData = {
