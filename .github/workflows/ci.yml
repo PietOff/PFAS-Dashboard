@@ -32,7 +32,13 @@ jobs:
       # Zorgt dat alle functions daadwerkelijk laden. Een ontbrekende import
       # (zoals runWeeklyScraper ooit) sneuvelt hier, niet pas bij een deploy.
       - name: Functions laden
-        run: node -e "const i=require('./index.js'); const n=Object.keys(i); if(n.length<10) throw new Error('te weinig exports: '+n.length); console.log('exports:', n.join(', '))"
+        run: |
+          node -e "
+            const i = require('./index.js');
+            const n = Object.keys(i);
+            if (n.length < 10) throw new Error('te weinig exports, gevonden ' + n.length);
+            console.log('exports gevonden', n.length, n.join(', '));
+          "
         env:
           GCLOUD_PROJECT: pfas-dashboard-ci
           FIREBASE_CONFIG: '{"projectId":"pfas-dashboard-ci"}'

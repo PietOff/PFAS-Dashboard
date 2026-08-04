@@ -374,6 +374,16 @@ test('de CI-workflows draaien de tests en de linkcheck', () => {
   const ci = fs.readFileSync(path.join(repo, '.github/workflows/ci.yml'), 'utf8');
   const links = fs.readFileSync(path.join(repo, '.github/workflows/bronlinks.yml'), 'utf8');
 
+  // De workflows moeten geldige YAML zijn. Een kapotte workflow draait niet en
+  // meldt zichzelf niet — hij bestaat gewoon niet voor GitHub.
+  for (const [naam, tekst] of [['ci.yml', ci], ['bronlinks.yml', links]]) {
+    for (const regel of tekst.split('\n')) {
+      const m = regel.match(/^\s+run: (?!\|)(.*)$/);
+      assert.ok(!m || !m[1].includes(': '),
+        `${naam}: inline \`run:\` met een dubbele punt breekt de YAML — gebruik \`run: |\``);
+    }
+  }
+
   assert.ok(ci.includes('npm test'), 'CI draait de smoke tests niet');
   assert.ok(ci.includes('pfasApi_code'), 'CI wijst niet naar de functions-map');
   // De linkcheck moet periodiek draaien, niet alleen op verzoek.
