@@ -59,15 +59,21 @@ jobs:
         run: |
           node -e "
             const r = require('/tmp/bronlinks.json');
-            const kapot = r.resultaten.filter(x => !(x.status >= 200 && x.status < 400));
+            const kapot = r.resultaten.filter(x => x.oordeel === 'kapot');
+            const geblokkeerd = r.resultaten.filter(x => x.oordeel === 'geblokkeerd');
             let md = '## Bronlinks\n\n';
             md += '- Gecontroleerd: ' + r.gecontroleerd + ' unieke URLs\n';
             md += '- Kapot: ' + kapot.length + '\n';
+            md += '- Geblokkeerd door bot-filter (niet fout): ' + geblokkeerd.length + '\n';
             md += '- Gemeenten met een kapotte link: ' + r.gemeentenMetKapotteLink + '\n';
-            if (kapot.length) {
-              md += '\n| Status | URL | Gemeenten |\n|---|---|---|\n';
-              for (const k of kapot) md += '| ' + (k.status || k.fout) + ' | ' + k.url + ' | ' + k.gemeenten.length + ' |\n';
-            }
+            const tabel = (titel, lijst) => {
+              if (!lijst.length) return '';
+              let t = '\n### ' + titel + '\n\n| Status | URL | Gemeenten |\n|---|---|---|\n';
+              for (const k of lijst) t += '| ' + (k.status || k.fout) + ' | ' + k.url + ' | ' + k.gemeenten.join(', ') + ' |\n';
+              return t;
+            };
+            md += tabel('Kapot', kapot) + tabel('Geblokkeerd', geblokkeerd);
+            console.log(md);
             require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
           "
 
@@ -77,7 +83,7 @@ jobs:
         with:
           script: |
             const r = require('/tmp/bronlinks.json');
-            const kapot = r.resultaten.filter(x => !(x.status >= 200 && x.status < 400));
+            const kapot = r.resultaten.filter(x => x.oordeel === 'kapot');
             if (!kapot.length) return;
 
             const titel = 'Kapotte bronlinks in gemeente_mapping.json';
