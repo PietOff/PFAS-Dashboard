@@ -322,6 +322,20 @@ test('de frontend en de hosting-configuratie sluiten op elkaar aan', () => {
 });
 
 // ------------------------------------------------------------------
+test('geen enkele gemeente heeft alleen een homepage als bron', () => {
+  // Een homepage laat de gebruiker zelf zoeken naar het bodembeleid. Waar de
+  // omgevingsdienst geen bruikbare pagina heeft, hoort de gemeente zelf de
+  // bron te zijn.
+  const mapping = require('../gemeente_mapping.json');
+  const kaal = Object.entries(mapping)
+    .filter(([, u]) => { const p = new URL(u).pathname; return p === '' || p === '/'; })
+    .map(([g]) => g);
+
+  assert.deepStrictEqual(kaal, [],
+    `Deze gemeenten wijzen naar een homepage zonder bodempagina: ${kaal.join(', ')}`);
+});
+
+// ------------------------------------------------------------------
 test('er staan geen API-sleutels in de broncode', () => {
   const bestanden = fs.readdirSync(wortel).filter(f => f.endsWith('.js'));
   const verdacht = [];
