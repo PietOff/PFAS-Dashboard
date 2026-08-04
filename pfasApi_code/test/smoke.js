@@ -78,6 +78,8 @@ test('index.js laadt en exporteert alle Cloud Functions', () => {
     'mergeDuplicateDocs',
     'auditData',
     'weeklyBekendmakingenSweep',
+    'dailyHealthCheck',
+    'healthCheck',
     'sweepBekendmakingenNow',
     'herbouwAfwijkingenNow'
   ];
@@ -333,6 +335,50 @@ test('geen enkele gemeente heeft alleen een homepage als bron', () => {
 
   assert.deepStrictEqual(kaal, [],
     `Deze gemeenten wijzen naar een homepage zonder bodempagina: ${kaal.join(', ')}`);
+});
+
+// ------------------------------------------------------------------
+test('beoordeelAudit signaleert de stille storingen', () => {
+  const { beoordeelAudit } = require('../audit');
+
+  const gezond = beoordeelAudit({
+    samenvatting: { ontbrekend: 0, verweesd: 0, dubbeleIds: 0, verdachteWaarden: 0,
+      zwakkeBronlinks: 0, dekkingProcent: 100, sweepDagenGeleden: 2 },
+    bronWaarschuwingen: []
+  });
+  assert.strictEqual(gezond.gezond, true, 'een volledige dataset moet gezond heten');
+
+  // Dit zijn precies de storingen die niemand opmerkt tot er een verkeerde
+  // norm wordt gebruikt.
+  const ziek = beoordeelAudit({
+    samenvatting: { ontbrekend: 3, verweesd: 1, dubbeleIds: 40, verdachteWaarden: 2,
+      zwakkeBronlinks: 15, dekkingProcent: 99.1, sweepDagenGeleden: 40 },
+    bronWaarschuwingen: []
+  });
+  assert.strictEqual(ziek.gezond, false);
+  assert.strictEqual(ziek.problemen.length, 6, 'elke storing hoort apart gemeld te worden');
+
+  // Een sweep die nog nooit draaide is geen "0 dagen geleden".
+  const nooit = beoordeelAudit({
+    samenvatting: { ontbrekend: 0, verweesd: 0, dubbeleIds: 0, verdachteWaarden: 0,
+      zwakkeBronlinks: 0, dekkingProcent: 100, sweepDagenGeleden: null },
+    bronWaarschuwingen: []
+  });
+  assert.strictEqual(nooit.gezond, false);
+  assert.ok(/nooit/.test(nooit.problemen[0]));
+});
+
+// ------------------------------------------------------------------
+test('de CI-workflows draaien de tests en de linkcheck', () => {
+  const repo = path.join(wortel, '..');
+  const ci = fs.readFileSync(path.join(repo, '.github/workflows/ci.yml'), 'utf8');
+  const links = fs.readFileSync(path.join(repo, '.github/workflows/bronlinks.yml'), 'utf8');
+
+  assert.ok(ci.includes('npm test'), 'CI draait de smoke tests niet');
+  assert.ok(ci.includes('pfasApi_code'), 'CI wijst niet naar de functions-map');
+  // De linkcheck moet periodiek draaien, niet alleen op verzoek.
+  assert.ok(/schedule:/.test(links) && /cron:/.test(links), 'linkcheck heeft geen schema');
+  assert.ok(links.includes('check-links.js'), 'linkcheck draait het script niet');
 });
 
 // ------------------------------------------------------------------

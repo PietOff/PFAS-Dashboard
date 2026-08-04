@@ -5,6 +5,7 @@ const cors = require('cors');
 const { runWeeklyScraper } = require('./scraper');
 const { toDocId } = require('./docId');
 const { haalGemeenteLijst } = require('./gemeentelijst');
+const { verzamelAudit, beoordeelAudit } = require('./audit');
 
 // Landelijk kader bij het Informatiepunt Leefomgeving (opvolger van bodemplus.nl).
 const LANDELIJK_KADER_LINK =
@@ -461,134 +462,81 @@ exports.fixLinks = functions.runWith({ timeoutSeconds: 540 }).https.onRequest(as
 // ============================================================
 // AUDIT: is de dataset compleet en plausibel?
 // ============================================================
-// Vergelijkt Firestore met de canonieke gemeentelijst en rapporteert elk gat.
-// Dit is de enige manier om te kúnnen zeggen dat alle gemeenten verwerkt zijn;
-// "de scraper is gedraaid zonder fouten" bewijst dat niet.
-//
-// Schrijft niets. Bedoeld om na elke scraper-run te draaien en om in de gaten
-// te houden of de dekking niet stilletjes wegzakt.
+// De logica staat in audit.js, zodat zowel deze HTTP-endpoint als de
+// dagelijkse controle exact dezelfde cijfers gebruiken.
 exports.auditData = functions.runWith({ timeoutSeconds: 300 }).https.onRequest(async (req, res) => {
-  const maxDagenOud = parseInt(req.query.maxDagen) || 90;
-
   try {
-    const lijst = await haalGemeenteLijst();
-    const canoniek = new Map(lijst.gemeenten.map(n => [toDocId(n), n]));
-
-    const snapshot = await db.collection('pfasData').get();
-
-    const inDb = new Map();
-    const dubbeleIds = [];
-    const verdachteWaarden = [];
-    const zwakkeBronnen = [];
-    const verouderd = [];
-    let afwijkendBeleid = 0;
-    let teReviewen = 0;
-    const herkomst = {};
-
-    const vandaag = new Date();
-
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const naam = data.gemeente || doc.id;
-      const id = toDocId(naam);
-
-      if (doc.id !== id) dubbeleIds.push({ docId: doc.id, zouMoetenZijn: id });
-      inDb.set(id, data);
-
-      if (data.heeftAfwijkendBeleid === true) afwijkendBeleid++;
-      if (data.tereviewen === true) teReviewen++;
-      herkomst[data.herkomst || 'onbekend'] = (herkomst[data.herkomst || 'onbekend'] || 0) + 1;
-
-      // Waarden plausibel?
-      for (const stof of ['pfos', 'pfoa', 'genx']) {
-        const w = data[stof];
-        if (!w) {
-          verdachteWaarden.push({ gemeente: naam, probleem: `${stof} ontbreekt volledig` });
-          continue;
-        }
-        for (const klasse of ['wonen', 'industrie', 'landbouwNatuur']) {
-          const v = w[klasse];
-          if (typeof v !== 'number' || !Number.isFinite(v)) {
-            verdachteWaarden.push({ gemeente: naam, probleem: `${stof}.${klasse} is geen getal (${v})` });
-          } else if (v <= 0 || v > 50) {
-            verdachteWaarden.push({ gemeente: naam, probleem: `${stof}.${klasse} = ${v} (buiten 0-50)` });
-          }
-        }
-      }
-
-      // Bronlink bruikbaar?
-      const link = data.bronLink;
-      if (!link) {
-        zwakkeBronnen.push({ gemeente: naam, probleem: 'geen bronLink' });
-      } else if (link.includes('google.com/search')) {
-        zwakkeBronnen.push({ gemeente: naam, probleem: 'bronLink is een Google-zoekopdracht' });
-      } else {
-        try {
-          const pad = new URL(link).pathname;
-          if (pad === '' || pad === '/') {
-            zwakkeBronnen.push({ gemeente: naam, probleem: 'bronLink is alleen een homepage, geen PFAS-pagina' });
-          }
-        } catch {
-          zwakkeBronnen.push({ gemeente: naam, probleem: `bronLink is geen geldige URL (${link})` });
-        }
-      }
-
-      // Hoe oud is de laatste update?
-      if (data.laatstGeupdate) {
-        const dagen = Math.floor((vandaag - new Date(data.laatstGeupdate)) / 86400000);
-        if (Number.isFinite(dagen) && dagen > maxDagenOud) {
-          verouderd.push({ gemeente: naam, laatstGeupdate: data.laatstGeupdate, dagenOud: dagen });
-        }
-      } else {
-        verouderd.push({ gemeente: naam, laatstGeupdate: null, dagenOud: null });
-      }
-    });
-
-    const ontbrekend = [...canoniek.entries()]
-      .filter(([id]) => !inDb.has(id))
-      .map(([, naam]) => naam);
-
-    const verweesd = [...inDb.keys()]
-      .filter(id => !canoniek.has(id))
-      .map(id => (inDb.get(id).gemeente || id));
-
-    const dekking = canoniek.size > 0
-      ? Math.round(((canoniek.size - ontbrekend.length) / canoniek.size) * 1000) / 10
-      : 0;
-
-    res.json({
-      samenvatting: {
-        gemeentenVolgensBron: canoniek.size,
-        documentenInFirestore: snapshot.size,
-        dekkingProcent: dekking,
-        ontbrekend: ontbrekend.length,
-        verweesd: verweesd.length,
-        dubbeleIds: dubbeleIds.length,
-        verdachteWaarden: verdachteWaarden.length,
-        zwakkeBronlinks: zwakkeBronnen.length,
-        verouderd: verouderd.length,
-        metAfwijkendBeleid: afwijkendBeleid,
-        teReviewen
-      },
-      // Waar komt het getal per gemeente vandaan? 'landelijk-kader-aanname'
-      // betekent: geen officieel document gevonden, landelijk kader aangenomen.
-      // Dat is geen vaststelling en hoort in de UI ook niet zo te ogen.
-      herkomst,
-      bron: lijst.bron,
-      bronWaarschuwingen: lijst.waarschuwingen,
-      // Gemeenten die de canonieke lijst wel kent maar Firestore niet
-      ontbrekendeGemeenten: ontbrekend,
-      // Documenten voor gemeenten die niet meer bestaan (bijv. na een herindeling)
-      verweesdeDocumenten: verweesd,
-      dubbeleIds,
-      verdachteWaarden,
-      zwakkeBronlinks: zwakkeBronnen,
-      verouderdeDocumenten: verouderd.sort((a, b) => (b.dagenOud || 1e9) - (a.dagenOud || 1e9)).slice(0, 50)
-    });
-
+    const rapport = await verzamelAudit(db, { maxDagenOud: parseInt(req.query.maxDagen) || 90 });
+    res.json(rapport);
   } catch (error) {
     console.error('Audit gefaald:', error);
     res.status(500).json({ error: error.message, waarschuwingen: error.waarschuwingen });
+  }
+});
+
+
+// ============================================================
+// DAGELIJKSE CONTROLE
+// ============================================================
+// Draait elke ochtend om 07:00 en beoordeelt de dataset. Het resultaat gaat
+// naar config/healthcheck en, bij problemen, als console.error naar Cloud
+// Logging — daar kun je een log-based alert op zetten zonder dat er verder
+// iets hoeft te draaien.
+//
+// Dit vervangt het handmatig langslopen: dekking die wegzakt, dubbele
+// documenten of een sweep die stilstaat merk je anders pas als iemand een
+// verkeerde norm gebruikt.
+exports.dailyHealthCheck = functions
+  .runWith({ timeoutSeconds: 300 })
+  .pubsub
+  .schedule('0 7 * * *')
+  .timeZone('Europe/Amsterdam')
+  .onRun(async () => {
+    let rapport, oordeel;
+    try {
+      rapport = await verzamelAudit(db, { maxDagenOud: 90 });
+      oordeel = beoordeelAudit(rapport);
+    } catch (err) {
+      console.error('❌ HEALTHCHECK MISLUKT:', err.message);
+      await db.collection('config').doc('healthcheck').set({
+        tijdstip: new Date().toISOString(), gezond: false, fout: err.message
+      }, { merge: true });
+      return null;
+    }
+
+    await db.collection('config').doc('healthcheck').set({
+      tijdstip: rapport.tijdstip,
+      gezond: oordeel.gezond,
+      problemen: oordeel.problemen,
+      samenvatting: rapport.samenvatting,
+      herkomst: rapport.herkomst
+    }, { merge: true });
+
+    if (oordeel.gezond) {
+      console.log('✅ Healthcheck in orde:', JSON.stringify(rapport.samenvatting));
+    } else {
+      // console.error is hier bewust: hierop kan een alert in Cloud Logging staan.
+      console.error('❌ PFAS DASHBOARD HEALTHCHECK: ' + oordeel.problemen.length +
+        ' probleem(en)\n - ' + oordeel.problemen.join('\n - '));
+    }
+    return null;
+  });
+
+// Zelfde controle, maar direct opvraagbaar. Geeft HTTP 200 als alles klopt en
+// 503 als er iets mis is, zodat een externe uptime-monitor erop kan afgaan.
+exports.healthCheck = functions.runWith({ timeoutSeconds: 300 }).https.onRequest(async (req, res) => {
+  try {
+    const rapport = await verzamelAudit(db, { maxDagenOud: parseInt(req.query.maxDagen) || 90 });
+    const oordeel = beoordeelAudit(rapport);
+    res.status(oordeel.gezond ? 200 : 503).json({
+      gezond: oordeel.gezond,
+      problemen: oordeel.problemen,
+      samenvatting: rapport.samenvatting,
+      herkomst: rapport.herkomst
+    });
+  } catch (error) {
+    console.error('Healthcheck gefaald:', error);
+    res.status(503).json({ gezond: false, fout: error.message });
   }
 });
 

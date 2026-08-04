@@ -116,6 +116,49 @@ curl "https://<regio>-pfas-dashboard-nl-a808d.cloudfunctions.net/mergeDuplicateD
 Handmatige overschrijvingen (`handmatigeOverschrijving: true`) winnen bij het
 samenvoegen, daarna het canonieke document, daarna het meest recent bijgewerkte.
 
+## Automatische controles
+
+Draaien zonder dat er iemand — of iets — hoeft mee te kijken.
+
+### GitHub Actions
+
+| Workflow | Wanneer | Wat |
+| --- | --- | --- |
+| `ci.yml` | elke push en PR | `npm test` plus een laadtest van alle Cloud Functions |
+| `bronlinks.yml` | elke maandag 06:00 UTC | haalt elke bronlink echt op; opent of werkt een issue bij als er een 404 geeft |
+
+De linkcheck is er omdat bronlinks stilletjes verlopen: ODRN fuseerde tot
+Omgevingsdienst Groene Metropool, RUD Zeeland zit op een domein mét koppelteken.
+Zo'n verandering merk je nergens aan, behalve dat iemand die grond wil afvoeren
+op een 404 landt. De runner heeft normale netwerktoegang, dus dit is een echte
+HTTP-controle — niet af te leiden uit een zoekindex.
+
+De laadtest in `ci.yml` vangt precies de fout die `runScraperNow` maandenlang
+stukmaakte: een aanroep zonder import valt pas om bij uitvoering, niet bij
+`node --check`.
+
+### Firebase
+
+| Function | Wanneer | Wat |
+| --- | --- | --- |
+| `dailyHealthCheck` | dagelijks 07:00 | beoordeelt de dataset, schrijft naar `config/healthcheck` |
+| `healthCheck` | op aanvraag | zelfde oordeel; **HTTP 200** als alles klopt, **503** als niet |
+
+`dailyHealthCheck` slaat alarm bij ontbrekende gemeenten, verweesde documenten,
+dubbele document-id's, onaannemelijke waarden, onbruikbare bronlinks en een
+sweep die langer dan tien dagen stilstaat. Bij problemen gaat er een
+`console.error` naar Cloud Logging — zet daar een log-based alert op:
+
+```
+resource.type="cloud_function"
+resource.labels.function_name="dailyHealthCheck"
+severity=ERROR
+```
+
+`healthCheck` geeft 503 bij problemen, zodat een uptime-monitor (Cloud
+Monitoring, of iets als UptimeRobot) er rechtstreeks op kan afgaan zonder de
+uitvoer te hoeven lezen.
+
 ## Dekking en juistheid
 
 Twee verschillende problemen, met verschillende oplossingen.
