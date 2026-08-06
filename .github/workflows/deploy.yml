@@ -1,0 +1,150 @@
+name: Deploy naar Firebase
+
+# Handmatig starten via Actions → Deploy naar Firebase → Run workflow.
+#
+# Eenmalig instellen: repo Settings → Secrets and variables → Actions →
+# New repository secret, naam FIREBASE_SERVICE_ACCOUNT, waarde de volledige
+# JSON van een serviceaccount-sleutel met de rollen Firebase Admin, Cloud
+# Functions Admin en Service Account User.
+#
+# BELANGRIJK — waarom functions per stuk gedeployd worden:
+# `firebase deploy --only functions` VERWIJDERT functions die niet meer in de
+# broncode staan. In dit project draaien op dit moment vijf functions die niet
+# in deze repository zitten (api, weeklyBronbewaking, bronbewakingNow,
+# verzoenGemeenteAliases, dailyBekendmakingenSweep). Een gewone deploy zou die
+# weggooien. Daarom bouwt deze workflow een expliciete lijst uit de exports van
+# index.js en deployt alleen díe. Wat er niet in staat, blijft ongemoeid.
+
+on:
+  workflow_dispatch:
+    inputs:
+      onderdeel:
+        description: Wat deployen
+        required: true
+        default: hosting
+        type: choice
+        options:
+          - hosting
+          - firestore
+          - functions
+          - alles
+      bevestig:
+        description: Typ DEPLOY om te bevestigen
+        required: true
+        default: ''
+
+env:
+  PROJECT_ID: pfas-dashboard-nl-a808d
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.onderdeel }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Bevestiging controleren
+        if: inputs.bevestig != 'DEPLOY'
+        run: |
+          echo "::error::Bevestiging ontbreekt. Typ DEPLOY in het bevestigingsveld."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: pfasApi_code/package-lock.json
+
+      - name: Dependencies
+        working-directory: pfasApi_code
+        run: npm ci
+
+      # De tests moeten groen zijn voordat er ook maar iets live gaat.
+      - name: Tests
+        working-directory: pfasApi_code
+        run: npm test
+
+      # gemeenten.geojson staat op de live hosting maar niet in de repository.
+      # Een hosting-deploy vervangt de hele site, dus zonder deze stap zou het
+      # bestand verdwijnen en zou de kaart terugvallen op de Kadaster-API.
+      - name: gemeenten.geojson ophalen
+        if: inputs.onderdeel == 'hosting' || inputs.onderdeel == 'alles'
+        run: |
+          if curl -fsSL --retry 3 -o public/gemeenten.geojson \
+               "https://${PROJECT_ID}.web.app/gemeenten.geojson"; then
+            node -e "
+              const g = require('./public/gemeenten.geojson');
+              const n = (g.features || []).length;
+              if (n < 100) throw new Error('gemeenten.geojson bevat maar ' + n + ' features');
+              console.log('gemeenten.geojson opgehaald:', n, 'features');
+            "
+          else
+            echo '::warning::gemeenten.geojson niet op te halen; de kaart valt terug op de Kadaster-API.'
+            rm -f public/gemeenten.geojson
+          fi
+
+      - name: Serviceaccount klaarzetten
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "::error::Secret FIREBASE_SERVICE_ACCOUNT ontbreekt."
+            exit 1
+          fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          node -e "require('$RUNNER_TEMP/sa.json')" || { echo '::error::Secret is geen geldige JSON.'; exit 1; }
+
+      # Lijst opbouwen uit de daadwerkelijke exports, zodat er niets buiten deze
+      # repository geraakt wordt.
+      - name: Functielijst bepalen
+        if: inputs.onderdeel == 'functions' || inputs.onderdeel == 'alles'
+        id: fnlijst
+        working-directory: pfasApi_code
+        env:
+          GCLOUD_PROJECT: ${{ env.PROJECT_ID }}
+          FIREBASE_CONFIG: '{"projectId":"pfas-dashboard-nl-a808d"}'
+        run: |
+          LIJST=$(node -e "
+            const namen = Object.keys(require('./index.js'));
+            if (!namen.length) throw new Error('geen exports gevonden');
+            console.log(namen.map(n => 'functions:' + n).join(','));
+          ")
+          echo "lijst=$LIJST" >> "$GITHUB_OUTPUT"
+          echo "Deployt alleen: $LIJST"
+
+      - name: Deploy
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+          FN: ${{ steps.fnlijst.outputs.lijst }}
+        run: |
+          set -eu
+          case "${{ inputs.onderdeel }}" in
+            hosting)   DOELEN="hosting" ;;
+            firestore) DOELEN="firestore" ;;
+            functions) DOELEN="$FN" ;;
+            alles)     DOELEN="hosting,firestore,$FN" ;;
+          esac
+          echo "firebase deploy --only $DOELEN"
+          npx --yes firebase-tools@13 deploy \
+            --only "$DOELEN" \
+            --project "$PROJECT_ID" \
+            --non-interactive \
+            --force
+
+      - name: Opruimen
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
+
+      - name: Samenvatting
+        if: always()
+        run: |
+          {
+            echo "## Deploy ${{ inputs.onderdeel }}"
+            echo ""
+            echo "- Project: \`$PROJECT_ID\`"
+            echo "- Commit: \`${GITHUB_SHA:0:7}\`"
+            echo "- Resultaat: ${{ job.status }}"
+            echo ""
+            echo "Functions buiten deze repository zijn niet aangeraakt."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,98 @@
+name: Data-onderhoud
+
+# Draait de onderhoudsfuncties die al live staan, zodat je er geen terminal
+# voor nodig hebt. Actions → Data-onderhoud → Run workflow.
+#
+# De acties in volgorde waarin je ze normaal draait:
+#   audit          kijken hoe de dataset ervoor staat (schrijft niets)
+#   dubbelen-droog rapport van dubbele documenten (schrijft niets)
+#   dubbelen-echt  voegt de dubbelen samen en verwijdert de restanten
+#   sweep          haalt bekendmakingen op en verwerkt nieuwe documenten
+#   herbouw        leidt de toestand per gemeente opnieuw af (geen AI-calls)
+
+on:
+  workflow_dispatch:
+    inputs:
+      actie:
+        description: Welke actie
+        required: true
+        default: audit
+        type: choice
+        options:
+          - audit
+          - dubbelen-droog
+          - dubbelen-echt
+          - sweep
+          - herbouw
+      vanaf:
+        description: 'Alleen bij sweep — begindatum (JJJJ-MM-DD), leeg = vanaf het watermerk'
+        required: false
+        default: ''
+      bevestig:
+        description: 'Alleen bij dubbelen-echt — typ VERWIJDER om te bevestigen'
+        required: false
+        default: ''
+
+env:
+  BASIS: https://us-central1-pfas-dashboard-nl-a808d.cloudfunctions.net
+
+jobs:
+  onderhoud:
+    name: ${{ inputs.actie }}
+    runs-on: ubuntu-latest
+
+    steps:
+      # dubbelen-echt verwijdert documenten. Dat mag niet per ongeluk.
+      - name: Bevestiging controleren
+        if: inputs.actie == 'dubbelen-echt' && inputs.bevestig != 'VERWIJDER'
+        run: |
+          echo "::error::dubbelen-echt verwijdert documenten. Typ VERWIJDER in het bevestigingsveld."
+          exit 1
+
+      - name: Uitvoeren
+        run: |
+          set -eu
+          case "${{ inputs.actie }}" in
+            audit)          URL="$BASIS/auditData" ;;
+            dubbelen-droog) URL="$BASIS/mergeDuplicateDocs" ;;
+            dubbelen-echt)  URL="$BASIS/mergeDuplicateDocs?apply=true" ;;
+            herbouw)        URL="$BASIS/herbouwAfwijkingenNow" ;;
+            sweep)
+              URL="$BASIS/sweepBekendmakingenNow?max=200"
+              if [ -n "${{ inputs.vanaf }}" ]; then
+                URL="$URL&vanaf=${{ inputs.vanaf }}"
+              fi
+              ;;
+          esac
+
+          echo "GET $URL"
+          # Deze functies kunnen minuten draaien; ruime timeout.
+          CODE=$(curl -sS -o /tmp/uitkomst.json -w '%{http_code}' --max-time 900 "$URL" || echo 000)
+          echo "HTTP $CODE"
+          echo "$CODE" > /tmp/code.txt
+
+      - name: Resultaat tonen
+        if: always()
+        run: |
+          CODE=$(cat /tmp/code.txt 2>/dev/null || echo 000)
+          {
+            echo "## ${{ inputs.actie }}"
+            echo ""
+            echo "HTTP \`$CODE\`"
+            echo ""
+            echo '```json'
+            # Niet alles: sommige rapporten bevatten honderden regels detail.
+            head -c 6000 /tmp/uitkomst.json 2>/dev/null || echo '(geen uitvoer)'
+            echo ""
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          node -e "
+            const fs = require('fs');
+            let d; try { d = JSON.parse(fs.readFileSync('/tmp/uitkomst.json', 'utf8')); } catch { process.exit(0); }
+            if (d.samenvatting) console.log('samenvatting:', JSON.stringify(d.samenvatting, null, 1));
+            if (d.resultaat)   console.log('resultaat:',   JSON.stringify(d.resultaat, null, 1));
+            if (d.modus)       console.log('modus:', d.modus, '| dubbelen:', d.gemeentenMetDubbelen, '| te verwijderen:', d.documentenTeVerwijderen);
+          " || true
+
+          [ "$CODE" = "200" ] || { echo "::error::De functie gaf HTTP $CODE"; exit 1; }
