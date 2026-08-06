@@ -101,7 +101,19 @@ jobs:
             exit 1
           fi
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
-          node -e "require('$RUNNER_TEMP/sa.json')" || { echo '::error::Secret is geen geldige JSON.'; exit 1; }
+          # Toon welk account er gebruikt wordt. Het e-mailadres is niet geheim,
+          # en zonder deze regel is niet te zien dat de secret nog de sleutel van
+          # een ander serviceaccount bevat dan je denkt — precies de reden dat een
+          # deploy kan blijven falen op ontbrekende rechten terwijl je die rechten
+          # net aan een ánder account hebt gegeven.
+          node -e "
+            const sa = require('$RUNNER_TEMP/sa.json');
+            console.log('Serviceaccount:', sa.client_email);
+            console.log('Project in sleutel:', sa.project_id);
+            if (String(sa.client_email).includes('@appspot.gserviceaccount.com')) {
+              console.log('::warning::Dit is het App Engine-standaardaccount. Dat heeft doorgaans alleen Editor, en Editor mist cloudfunctions.functions.setIamPolicy — nodig voor een NIEUWE HTTPS-functie.');
+            }
+          " || { echo '::error::Secret is geen geldige JSON.'; exit 1; }
 
       # Lijst opbouwen uit de daadwerkelijke exports, zodat er niets buiten deze
       # repository geraakt wordt.
