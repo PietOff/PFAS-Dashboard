@@ -73,8 +73,12 @@ jobs:
         run: |
           if curl -fsSL --retry 3 -o public/gemeenten.geojson \
                "https://${PROJECT_ID}.web.app/gemeenten.geojson"; then
+            # require() parseert alleen bestanden met de extensie .json als JSON.
+            # Dit heet .geojson, dus require() las het als JavaScript en viel om
+            # op de eerste dubbele punt. Vandaar readFileSync + JSON.parse.
             node -e "
-              const g = require('./public/gemeenten.geojson');
+              const fs = require('fs');
+              const g = JSON.parse(fs.readFileSync('public/gemeenten.geojson', 'utf8'));
               const n = (g.features || []).length;
               if (n < 100) throw new Error('gemeenten.geojson bevat maar ' + n + ' features');
               console.log('gemeenten.geojson opgehaald:', n, 'features');
