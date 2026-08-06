@@ -32,6 +32,10 @@ on:
         description: Typ DEPLOY om te bevestigen
         required: true
         default: ''
+      overslaan:
+        description: 'Functies overslaan (komma-gescheiden), bijv. healthCheck'
+        required: false
+        default: ''
 
 env:
   PROJECT_ID: pfas-dashboard-nl-a808d
@@ -109,9 +113,14 @@ jobs:
           GCLOUD_PROJECT: ${{ env.PROJECT_ID }}
           FIREBASE_CONFIG: '{"projectId":"pfas-dashboard-nl-a808d"}'
         run: |
-          LIJST=$(node -e "
-            const namen = Object.keys(require('./index.js'));
-            if (!namen.length) throw new Error('geen exports gevonden');
+          # Een NIEUWE HTTPS-functie vereist cloudfunctions.functions.setIamPolicy.
+          # Ontbreekt dat recht nog, dan kun je hem hier tijdelijk overslaan en de
+          # rest wel bijwerken.
+          LIJST=$(OVERSLAAN="${{ inputs.overslaan }}" node -e "
+            const skip = new Set((process.env.OVERSLAAN || '').split(',').map(s => s.trim()).filter(Boolean));
+            const namen = Object.keys(require('./index.js')).filter(n => !skip.has(n));
+            if (!namen.length) throw new Error('geen exports over om te deployen');
+            if (skip.size) console.error('Overgeslagen: ' + [...skip].join(', '));
             console.log(namen.map(n => 'functions:' + n).join(','));
           ")
           echo "lijst=$LIJST" >> "$GITHUB_OUTPUT"
