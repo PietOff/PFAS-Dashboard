@@ -78,6 +78,8 @@ test('index.js laadt en exporteert alle Cloud Functions', () => {
     'mergeDuplicateDocs',
     'auditData',
     'weeklyBekendmakingenSweep',
+    'dailyHealthCheck',
+    'healthCheck',
     'sweepBekendmakingenNow',
     'herbouwAfwijkingenNow'
   ];
@@ -319,6 +321,74 @@ test('de frontend en de hosting-configuratie sluiten op elkaar aan', () => {
   for (const h of ['officiele-bekendmaking', 'mogelijk-afwijkend', 'landelijk-kader-aanname', 'handmatig']) {
     assert.ok(html.includes(h), `frontend kent herkomst '${h}' niet`);
   }
+});
+
+// ------------------------------------------------------------------
+test('geen enkele gemeente heeft alleen een homepage als bron', () => {
+  // Een homepage laat de gebruiker zelf zoeken naar het bodembeleid. Waar de
+  // omgevingsdienst geen bruikbare pagina heeft, hoort de gemeente zelf de
+  // bron te zijn.
+  const mapping = require('../gemeente_mapping.json');
+  const kaal = Object.entries(mapping)
+    .filter(([, u]) => { const p = new URL(u).pathname; return p === '' || p === '/'; })
+    .map(([g]) => g);
+
+  assert.deepStrictEqual(kaal, [],
+    `Deze gemeenten wijzen naar een homepage zonder bodempagina: ${kaal.join(', ')}`);
+});
+
+// ------------------------------------------------------------------
+test('beoordeelAudit signaleert de stille storingen', () => {
+  const { beoordeelAudit } = require('../audit');
+
+  const gezond = beoordeelAudit({
+    samenvatting: { ontbrekend: 0, verweesd: 0, dubbeleIds: 0, verdachteWaarden: 0,
+      zwakkeBronlinks: 0, dekkingProcent: 100, sweepDagenGeleden: 2 },
+    bronWaarschuwingen: []
+  });
+  assert.strictEqual(gezond.gezond, true, 'een volledige dataset moet gezond heten');
+
+  // Dit zijn precies de storingen die niemand opmerkt tot er een verkeerde
+  // norm wordt gebruikt.
+  const ziek = beoordeelAudit({
+    samenvatting: { ontbrekend: 3, verweesd: 1, dubbeleIds: 40, verdachteWaarden: 2,
+      zwakkeBronlinks: 15, dekkingProcent: 99.1, sweepDagenGeleden: 40 },
+    bronWaarschuwingen: []
+  });
+  assert.strictEqual(ziek.gezond, false);
+  assert.strictEqual(ziek.problemen.length, 6, 'elke storing hoort apart gemeld te worden');
+
+  // Een sweep die nog nooit draaide is geen "0 dagen geleden".
+  const nooit = beoordeelAudit({
+    samenvatting: { ontbrekend: 0, verweesd: 0, dubbeleIds: 0, verdachteWaarden: 0,
+      zwakkeBronlinks: 0, dekkingProcent: 100, sweepDagenGeleden: null },
+    bronWaarschuwingen: []
+  });
+  assert.strictEqual(nooit.gezond, false);
+  assert.ok(/nooit/.test(nooit.problemen[0]));
+});
+
+// ------------------------------------------------------------------
+test('de CI-workflows draaien de tests en de linkcheck', () => {
+  const repo = path.join(wortel, '..');
+  const ci = fs.readFileSync(path.join(repo, '.github/workflows/ci.yml'), 'utf8');
+  const links = fs.readFileSync(path.join(repo, '.github/workflows/bronlinks.yml'), 'utf8');
+
+  // De workflows moeten geldige YAML zijn. Een kapotte workflow draait niet en
+  // meldt zichzelf niet — hij bestaat gewoon niet voor GitHub.
+  for (const [naam, tekst] of [['ci.yml', ci], ['bronlinks.yml', links]]) {
+    for (const regel of tekst.split('\n')) {
+      const m = regel.match(/^\s+run: (?!\|)(.*)$/);
+      assert.ok(!m || !m[1].includes(': '),
+        `${naam}: inline \`run:\` met een dubbele punt breekt de YAML — gebruik \`run: |\``);
+    }
+  }
+
+  assert.ok(ci.includes('npm test'), 'CI draait de smoke tests niet');
+  assert.ok(ci.includes('pfasApi_code'), 'CI wijst niet naar de functions-map');
+  // De linkcheck moet periodiek draaien, niet alleen op verzoek.
+  assert.ok(/schedule:/.test(links) && /cron:/.test(links), 'linkcheck heeft geen schema');
+  assert.ok(links.includes('check-links.js'), 'linkcheck draait het script niet');
 });
 
 // ------------------------------------------------------------------

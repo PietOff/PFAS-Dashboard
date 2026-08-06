@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Smoke tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pfasApi_code
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: pfasApi_code/package-lock.json
+
+      - run: npm ci
+
+      # Draait zonder Firebase-credentials en zonder netwerk. Bewaakt onder meer
+      # de doc-id's, de SRU-query, de herindelingen en de bronlinks.
+      - run: npm test
+
+      # Zorgt dat alle functions daadwerkelijk laden. Een ontbrekende import
+      # (zoals runWeeklyScraper ooit) sneuvelt hier, niet pas bij een deploy.
+      - name: Functions laden
+        run: |
+          node -e "
+            const i = require('./index.js');
+            const n = Object.keys(i);
+            if (n.length < 10) throw new Error('te weinig exports, gevonden ' + n.length);
+            console.log('exports gevonden', n.length, n.join(', '));
+          "
+        env:
+          GCLOUD_PROJECT: pfas-dashboard-ci
+          FIREBASE_CONFIG: '{"projectId":"pfas-dashboard-ci"}'

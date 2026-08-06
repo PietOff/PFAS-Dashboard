@@ -1,0 +1,121 @@
+name: Bronlinks controleren
+
+# De bronlinks wijzen naar websites van gemeenten en omgevingsdiensten. Die
+# verhuizen, fuseren en gooien pagina's om — ODRN werd Omgevingsdienst Groene
+# Metropool, RUD Zeeland zit op een domein mét koppelteken. Een link die 404
+# geeft is voor iemand die grond wil afvoeren erger dan geen link.
+#
+# Deze job haalt de URL's echt op. Dat kan hier wél, anders dan in de omgeving
+# waarin ze zijn samengesteld.
+
+on:
+  schedule:
+    # Elke maandag 06:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'pfasApi_code/gemeente_mapping.json'
+      - 'pfasApi_code/check-links.js'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    name: Bronlinks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pfasApi_code
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: pfasApi_code/package-lock.json
+
+      - run: npm ci
+
+      - name: Links ophalen
+        id: check
+        run: node check-links.js --json > /tmp/bronlinks.json
+        continue-on-error: true
+
+      - name: Rapport bewaren
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bronlinks-rapport
+          path: /tmp/bronlinks.json
+          retention-days: 30
+
+      - name: Samenvatting
+        if: always()
+        run: |
+          node -e "
+            const r = require('/tmp/bronlinks.json');
+            const kapot = r.resultaten.filter(x => x.oordeel === 'kapot');
+            const geblokkeerd = r.resultaten.filter(x => x.oordeel === 'geblokkeerd');
+            let md = '## Bronlinks\n\n';
+            md += '- Gecontroleerd: ' + r.gecontroleerd + ' unieke URLs\n';
+            md += '- Kapot: ' + kapot.length + '\n';
+            md += '- Geblokkeerd door bot-filter (niet fout): ' + geblokkeerd.length + '\n';
+            md += '- Gemeenten met een kapotte link: ' + r.gemeentenMetKapotteLink + '\n';
+            const tabel = (titel, lijst) => {
+              if (!lijst.length) return '';
+              let t = '\n### ' + titel + '\n\n| Status | URL | Gemeenten |\n|---|---|---|\n';
+              for (const k of lijst) t += '| ' + (k.status || k.fout) + ' | ' + k.url + ' | ' + k.gemeenten.join(', ') + ' |\n';
+              return t;
+            };
+            md += tabel('Kapot', kapot) + tabel('Geblokkeerd', geblokkeerd);
+            console.log(md);
+            require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
+          "
+
+      - name: Issue openen bij kapotte links
+        if: steps.check.outcome == 'failure' && github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const r = require('/tmp/bronlinks.json');
+            const kapot = r.resultaten.filter(x => x.oordeel === 'kapot');
+            if (!kapot.length) return;
+
+            const titel = 'Kapotte bronlinks in gemeente_mapping.json';
+            const regels = kapot.map(k =>
+              `- \`${k.status || k.fout}\` ${k.url} — ${k.gemeenten.length} gemeente(n): ${k.gemeenten.slice(0, 8).join(', ')}${k.gemeenten.length > 8 ? '…' : ''}`
+            ).join('\n');
+            const body = [
+              `De wekelijkse controle vond ${kapot.length} onbereikbare bronlink(s), samen goed voor ${r.gemeentenMetKapotteLink} gemeenten.`,
+              '',
+              regels,
+              '',
+              'Een omgevingsdienst die fuseert of een pagina verplaatst is de gebruikelijke oorzaak.',
+              `[Workflow-run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+            ].join('\n');
+
+            const bestaand = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'bronlinks'
+            });
+
+            if (bestaand.data.length) {
+              await github.rest.issues.update({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: bestaand.data[0].number, body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title: titel, body, labels: ['bronlinks']
+              });
+            }
+
+      - name: Falen als er links kapot zijn
+        if: steps.check.outcome == 'failure'
+        run: exit 1
