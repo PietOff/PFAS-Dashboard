@@ -392,6 +392,13 @@ test('de CI-workflows draaien de tests en de linkcheck', () => {
   assert.ok(deploy.includes("'functions:' + n"), 'deploy.yml bouwt geen expliciete functielijst');
   assert.ok(deploy.includes('gemeenten.geojson'), 'deploy.yml haalt gemeenten.geojson niet op voor hosting');
 
+  // require() parseert alleen .json als JSON. Op een .geojson valt Node om met
+  // een SyntaxError, wat de eerste deploy liet stranden.
+  for (const [naam, tekst] of [['deploy.yml', deploy], ['ci.yml', ci], ['bronlinks.yml', links]]) {
+    assert.ok(!/require\([^)]*\.geojson/.test(tekst),
+      `${naam}: require() op een .geojson werkt niet — gebruik readFileSync + JSON.parse`);
+  }
+
   assert.ok(ci.includes('npm test'), 'CI draait de smoke tests niet');
   assert.ok(ci.includes('pfasApi_code'), 'CI wijst niet naar de functions-map');
   // De linkcheck moet periodiek draaien, niet alleen op verzoek.
