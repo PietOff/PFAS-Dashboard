@@ -348,3 +348,52 @@ SDK en omzeilen deze rules, dus die blijven gewoon werken.
 Stond het project nog op de tijdelijke "test mode"-rules, dan verliepen die na
 30 dagen en werd daarna álle toegang geweigerd — een veelvoorkomende oorzaak van
 een dashboard dat ineens leeg is.
+
+## Deployen en onderhoud via GitHub
+
+Alles wat live iets verandert, kan vanuit **Actions** — er is geen terminal voor
+nodig.
+
+### Eenmalig instellen
+
+Repo → Settings → Secrets and variables → Actions → New repository secret:
+
+| Naam | Waarde |
+| --- | --- |
+| `FIREBASE_SERVICE_ACCOUNT` | de volledige JSON van een serviceaccount-sleutel |
+
+Maak die sleutel in de Google Cloud Console onder IAM & Admin → Service
+Accounts, met de rollen **Firebase Admin**, **Cloud Functions Admin** en
+**Service Account User**.
+
+### Deploy naar Firebase
+
+Actions → *Deploy naar Firebase* → Run workflow. Kies `hosting`, `firestore`,
+`functions` of `alles`, en typ `DEPLOY` ter bevestiging.
+
+De workflow draait eerst de tests, haalt `gemeenten.geojson` van de live hosting
+op zodat een hosting-deploy dat bestand niet wist, en deployt daarna.
+
+> **Functions worden per stuk gedeployd, met opzet.** `firebase deploy --only
+> functions` verwijdert functions die niet meer in de broncode staan. In dit
+> project draaien vijf functions die niet in deze repository zitten — `api`,
+> `weeklyBronbewaking`, `bronbewakingNow`, `verzoenGemeenteAliases` en
+> `dailyBekendmakingenSweep`. Een gewone deploy zou die weggooien. De workflow
+> bouwt daarom een expliciete lijst uit de exports van `index.js` en raakt niets
+> anders aan. Een test bewaakt dat dit zo blijft.
+
+### Data-onderhoud
+
+Actions → *Data-onderhoud* → Run workflow. Roept de functies aan die al live
+staan; de uitkomst komt in de samenvatting van de run te staan.
+
+| Actie | Wat | Schrijft |
+| --- | --- | --- |
+| `audit` | hoe staat de dataset ervoor | nee |
+| `dubbelen-droog` | rapport van dubbele documenten | nee |
+| `dubbelen-echt` | voegt dubbelen samen (typ `VERWIJDER`) | ja |
+| `sweep` | haalt bekendmakingen op en verwerkt ze | ja |
+| `herbouw` | leidt de toestand per gemeente opnieuw af | ja |
+
+Volgorde bij een eerste keer: `audit` → `dubbelen-droog` → `dubbelen-echt` →
+`sweep` (met `vanaf` op `2019-01-01`, herhalen tot `verwerkt: 0`) → `audit`.

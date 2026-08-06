@@ -384,6 +384,14 @@ test('de CI-workflows draaien de tests en de linkcheck', () => {
     }
   }
 
+  // Een deploy van functions mag NOOIT `--only functions` zijn: dat verwijdert
+  // functions die niet in deze repo staan, en er draaien er vijf van buiten.
+  const deploy = fs.readFileSync(path.join(repo, '.github/workflows/deploy.yml'), 'utf8');
+  assert.ok(!/--only[ =]"?functions"?[\s,]/.test(deploy),
+    'deploy.yml gebruikt een kale --only functions; dat verwijdert onbekende functions');
+  assert.ok(deploy.includes("'functions:' + n"), 'deploy.yml bouwt geen expliciete functielijst');
+  assert.ok(deploy.includes('gemeenten.geojson'), 'deploy.yml haalt gemeenten.geojson niet op voor hosting');
+
   assert.ok(ci.includes('npm test'), 'CI draait de smoke tests niet');
   assert.ok(ci.includes('pfasApi_code'), 'CI wijst niet naar de functions-map');
   // De linkcheck moet periodiek draaien, niet alleen op verzoek.
