@@ -338,6 +338,100 @@ test('geen enkele gemeente heeft alleen een homepage als bron', () => {
 });
 
 // ------------------------------------------------------------------
+test('geen enkele gemeente wijst naar een opgeheven omgevingsdienst', () => {
+  // Een gefuseerde dienst laat zijn oude domein vaak nog jaren staan. De
+  // linkcheck ziet dan HTTP 200 en meldt niets, terwijl de gemeente naar een
+  // organisatie wijst die het beleid niet meer maakt. Alleen een expliciete
+  // lijst vangt dit.
+  const mapping = require('../gemeente_mapping.json');
+  const opgeheven = {
+    'odrn.nl': 'ODRN ging per 1-1-2026 op in Omgevingsdienst Groene Metropool (odgroenemetropool.nl)',
+    'odregioarnhem.nl': 'OD Regio Arnhem ging per 1-1-2026 op in Omgevingsdienst Groene Metropool',
+    'odru.nl': 'ODRU ging per 1-1-2026 op in Omgevingsdienst Utrecht (odu.nl)',
+    'rudutrecht.nl': 'RUD Utrecht ging per 1-1-2026 op in Omgevingsdienst Utrecht (odu.nl)',
+    'omgevingsdienst.nl': 'dit is de landelijke koepel Omgevingsdienst NL, geen uitvoerende dienst',
+    'omgevingsdienstachterhoek.nl': 'heet nu odachterhoek.nl',
+    'odh.nl': 'heet nu omgevingsdiensthaaglanden.nl',
+    'rudzeeland.nl': 'het domein heeft een koppelteken: rud-zeeland.nl'
+  };
+
+  const fout = [];
+  for (const [gemeente, url] of Object.entries(mapping)) {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    if (opgeheven[host]) fout.push(`${gemeente} → ${host} (${opgeheven[host]})`);
+  }
+
+  assert.deepStrictEqual(fout, [], 'verouderde omgevingsdiensten in de mapping:\n  ' + fout.join('\n  '));
+});
+
+// ------------------------------------------------------------------
+test('gemeenten staan bij de omgevingsdienst die hun beleid maakt', () => {
+  // Een bronlink kan prima HTTP 200 geven en tóch de verkeerde organisatie zijn.
+  // ODNZKG stond ooit op 31 gemeenten terwijl de dienst er 8 bedient; de rest
+  // hoort bij OD Noord-Holland Noord en OD IJmond. Zulke fouten zijn met geen
+  // enkele HTTP-controle te vinden, dus de deelnemerslijsten staan hier vast.
+  const mapping = require('../gemeente_mapping.json');
+  const hostVan = (g) => new URL(mapping[g]).hostname.replace(/^www\./, '');
+
+  // Bron: de eigen deelnemerspagina's van de diensten.
+  const deelnemers = {
+    'odnzkg.nl': ['Aalsmeer', 'Amstelveen', 'Amsterdam', 'Diemen', 'Haarlemmermeer',
+      'Ouder-Amstel', 'Uithoorn', 'Zaanstad'],
+    'odnhn.nl': ['Alkmaar', 'Bergen (NH.)', 'Castricum', 'Den Helder', 'Dijk en Waard',
+      'Drechterland', 'Enkhuizen', 'Heiloo', 'Hollands Kroon', 'Hoorn', 'Koggenland',
+      'Medemblik', 'Opmeer', 'Schagen', 'Stede Broec', 'Texel'],
+    'odijmond.nl': ['Beverwijk', 'Bloemendaal', 'Edam-Volendam', 'Haarlem', 'Heemskerk',
+      'Heemstede', 'Landsmeer', 'Oostzaan', 'Purmerend', 'Uitgeest', 'Velsen',
+      'Waterland', 'Wormerland', 'Zandvoort'],
+    'oddevallei.nl': ['Barneveld', 'Ede', 'Nijkerk', 'Scherpenzeel', 'Wageningen']
+  };
+
+  const fout = [];
+  for (const [host, gemeenten] of Object.entries(deelnemers)) {
+    for (const g of gemeenten) {
+      if (!(g in mapping)) { fout.push(`${g} ontbreekt in de mapping`); continue; }
+      if (hostVan(g) !== host) fout.push(`${g} → ${hostVan(g)}, hoort bij ${host}`);
+    }
+    // De dienst mag ook niet méér gemeenten toebedeeld krijgen dan hij bedient.
+    const toegewezen = Object.keys(mapping).filter(g => hostVan(g) === host);
+    const teveel = toegewezen.filter(g => !gemeenten.includes(g));
+    for (const g of teveel) fout.push(`${g} → ${host}, maar die dienst bedient die gemeente niet`);
+  }
+
+  assert.deepStrictEqual(fout, [], 'gemeenten bij de verkeerde omgevingsdienst:\n  ' + fout.join('\n  '));
+});
+
+// ------------------------------------------------------------------
+test('de linkcheck slaagt niet als hij niets heeft kunnen meten', () => {
+  // Draait de check in een omgeving zonder uitgaand netwerk, dan is elke URL
+  // "geblokkeerd", is het aantal kapotte links nul en eindigt hij groen — een
+  // controle die niets meet die zichzelf goedkeurt. Precies de stille storing
+  // die dit script hoort te vinden.
+  const bron = fs.readFileSync(path.join(wortel, 'check-links.js'), 'utf8');
+  assert.ok(/nietsGemeten/.test(bron), 'check-links.js kent geen nietsGemeten-controle');
+  assert.ok(/process\.exit\([^)]*nietsGemeten/.test(bron),
+    'nietsGemeten laat de check niet falen');
+});
+
+// ------------------------------------------------------------------
+test('de kernbronnen worden op bruikbare inhoud gecontroleerd', () => {
+  // check-links.js dekt de bronlinks per gemeente. De bronnen waar de data zelf
+  // vandaan komt vielen buiten elke controle: die geven HTTP 200 terwijl ze nul
+  // bruikbare records leveren.
+  const bron = fs.readFileSync(path.join(wortel, 'check-bronnen.js'), 'utf8');
+
+  for (const nodig of ['api.pdok.nl', 'locatieserver', 'sru/Search', 'gemeenten.geojson',
+    '/api/v1/gemeenten', 'iplo.nl']) {
+    assert.ok(bron.includes(nodig), `check-bronnen.js controleert ${nodig} niet`);
+  }
+
+  // Status 200 is niet genoeg: een lege SRU-respons en de HTML-fallback van de
+  // hosting zijn allebei "geslaagd" als je alleen naar de statuscode kijkt.
+  assert.ok(/numberOfRecords/.test(bron), 'de SRU-check kijkt niet naar het aantal records');
+  assert.ok(/JSON\.parse/.test(bron), 'de geojson-check vangt de HTML-fallback niet af');
+});
+
+// ------------------------------------------------------------------
 test('beoordeelAudit signaleert de stille storingen', () => {
   const { beoordeelAudit } = require('../audit');
 
@@ -404,6 +498,10 @@ test('de CI-workflows draaien de tests en de linkcheck', () => {
   // De linkcheck moet periodiek draaien, niet alleen op verzoek.
   assert.ok(/schedule:/.test(links) && /cron:/.test(links), 'linkcheck heeft geen schema');
   assert.ok(links.includes('check-links.js'), 'linkcheck draait het script niet');
+  // De kernbronnen falen stil; ze horen in dezelfde wekelijkse controle.
+  assert.ok(links.includes('check-bronnen.js'), 'de kernbronnen worden niet gecontroleerd');
+  assert.ok(/steps\.bronnen\.outcome == 'failure'/.test(links),
+    'een uitgevallen kernbron laat de workflow niet falen');
 });
 
 // ------------------------------------------------------------------

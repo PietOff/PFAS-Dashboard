@@ -17,6 +17,7 @@ on:
     paths:
       - 'pfasApi_code/gemeente_mapping.json'
       - 'pfasApi_code/check-links.js'
+      - 'pfasApi_code/check-bronnen.js'
 
 permissions:
   contents: read
@@ -46,12 +47,22 @@ jobs:
         run: node check-links.js --json > /tmp/bronlinks.json
         continue-on-error: true
 
+      # De bronlinks zijn de pagina's waar de gebruiker heen klikt. Dit zijn de
+      # bronnen waar de data zelf vandaan komt — PDOK, de SRU-API, de eigen
+      # hosting. Die falen stil, dus ze horen in dezelfde wekelijkse controle.
+      - name: Kernbronnen controleren
+        id: bronnen
+        run: node check-bronnen.js --json > /tmp/kernbronnen.json
+        continue-on-error: true
+
       - name: Rapport bewaren
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: bronlinks-rapport
-          path: /tmp/bronlinks.json
+          path: |
+            /tmp/bronlinks.json
+            /tmp/kernbronnen.json
           retention-days: 30
 
       - name: Samenvatting
@@ -63,9 +74,14 @@ jobs:
             const geblokkeerd = r.resultaten.filter(x => x.oordeel === 'geblokkeerd');
             let md = '## Bronlinks\n\n';
             md += '- Gecontroleerd: ' + r.gecontroleerd + ' unieke URLs\n';
+            md += '- Bevestigd bereikbaar: ' + (r.ok !== undefined ? r.ok : 'onbekend') + '\n';
             md += '- Kapot: ' + kapot.length + '\n';
             md += '- Geblokkeerd door bot-filter (niet fout): ' + geblokkeerd.length + '\n';
             md += '- Gemeenten met een kapotte link: ' + r.gemeentenMetKapotteLink + '\n';
+            if (r.nietsGemeten) {
+              md += '\n> ⛔ **Deze run heeft niets gemeten.** Geen enkele URL leverde een\n';
+              md += '> bevestiging op, dus dit zegt niets over de bronlinks.\n';
+            }
             const tabel = (titel, lijst) => {
               if (!lijst.length) return '';
               let t = '\n### ' + titel + '\n\n| Status | URL | Gemeenten |\n|---|---|---|\n';
@@ -73,6 +89,18 @@ jobs:
               return t;
             };
             md += tabel('Kapot', kapot) + tabel('Geblokkeerd', geblokkeerd);
+
+            // Kernbronnen: PDOK, SRU, de eigen hosting en de API.
+            try {
+              const b = require('/tmp/kernbronnen.json');
+              md += '\n## Kernbronnen\n\n| Bron | Status | Detail |\n|---|---|---|\n';
+              for (const u of b.uitkomsten) {
+                md += '| ' + u.naam + ' | ' + (u.ok ? '✅' : '❌') + ' | ' + u.detail + ' |\n';
+              }
+            } catch (e) {
+              md += '\n## Kernbronnen\n\nGeen rapport — de controle is niet afgerond.\n';
+            }
+
             console.log(md);
             require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
           "
@@ -116,6 +144,6 @@ jobs:
               });
             }
 
-      - name: Falen als er links kapot zijn
-        if: steps.check.outcome == 'failure'
+      - name: Falen als er links kapot zijn of een kernbron uitvalt
+        if: steps.check.outcome == 'failure' || steps.bronnen.outcome == 'failure'
         run: exit 1
