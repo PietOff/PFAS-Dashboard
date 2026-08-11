@@ -43,6 +43,54 @@ async function haal(url, { type = 'json', timeout = 30000 } = {}) {
 }
 
 /**
+ * Voert één SRU-zoekvraag uit en geeft het aantal records terug.
+ *
+ * Een losse 5xx zegt niets — die komt bij KOOP met enige regelmaat voorbij.
+ * Pas als het na een paar pogingen nog steeds misgaat is er iets aan de hand,
+ * anders zou deze controle wekelijks vals alarm slaan en binnen een maand
+ * genegeerd worden.
+ */
+async function sruProbe(query, { pogingen = 3 } = {}) {
+  const url = 'https://zoek.officielebekendmakingen.nl/sru/Search' +
+    '?version=1.2&operation=searchRetrieve&x-connection=oep' +
+    `&startRecord=1&maximumRecords=1&query=${encodeURIComponent(query)}`;
+
+  let laatste = 'onbekend';
+
+  for (let poging = 1; poging <= pogingen; poging++) {
+    let r;
+    try {
+      r = await haal(url, { type: 'text' });
+    } catch (err) {
+      laatste = `niet bereikbaar (${err.code || err.message})`;
+      continue;
+    }
+
+    if (r.status >= 500) {
+      laatste = `HTTP ${r.status}`;
+      // Even wachten; een overbelaste index herstelt vaak binnen seconden.
+      await new Promise(res => setTimeout(res, 2000 * poging));
+      continue;
+    }
+    if (r.status !== 200) return { ok: false, fout: `HTTP ${r.status}` };
+
+    const xml = String(r.data);
+
+    // SRU meldt fouten via <diagnostic> mét HTTP 200. Zonder deze check ziet
+    // een afgewezen query eruit als "geen resultaten".
+    const diagnostic = xml.match(/<(?:\w+:)?message>([^<]+)</i);
+    if (diagnostic) return { ok: false, fout: `SRU-diagnostic: ${diagnostic[1]}` };
+
+    const m = xml.match(/<(?:\w+:)?numberOfRecords>(\d+)/);
+    if (!m) return { ok: false, fout: 'geen numberOfRecords in het antwoord' };
+
+    return { ok: true, aantal: parseInt(m[1], 10) };
+  }
+
+  return { ok: false, fout: `${laatste} na ${pogingen} pogingen` };
+}
+
+/**
  * Elke controle geeft { ok, detail } terug. `ok: false` laat het script falen;
  * een controle die zichzelf niet kan uitvoeren geeft dat expliciet aan in
  * `detail` in plaats van stilletjes te slagen.
@@ -91,32 +139,41 @@ const CONTROLES = [
     naam: 'SRU officielebekendmakingen.nl',
     waarom: 'enige bron die als vaststaand beleid mag gelden',
     async run() {
-      // Een ruim venster: de vraag is of de query werkt, niet of er deze week
-      // toevallig iets gepubliceerd is.
-      const query = bouwCqlQuery({ vanaf: '2019-01-01' });
-      const url = 'https://zoek.officielebekendmakingen.nl/sru/Search' +
-        '?version=1.2&operation=searchRetrieve&x-connection=oep' +
-        `&startRecord=1&maximumRecords=1&query=${encodeURIComponent(query)}`;
+      // De query wordt in stappen opgebouwd. Faalt de API, dan wil je weten of
+      // hij plat ligt of dat juist ónze query wordt afgewezen — dat is het
+      // verschil tussen wachten en repareren. Zonder deze opbouw levert een
+      // kapotte productie-query dezelfde melding op als een storing bij KOOP.
+      const stappen = [
+        { naam: 'API bereikbaar', query: 'c.product-area=="officielepublicaties"' },
+        { naam: '+ publicatiebladen', query: bouwCqlQuery().split(' and ').slice(0, 2).join(' and ') },
+        { naam: '+ PFAS- en bodemtermen', query: bouwCqlQuery() },
+        { naam: '+ datumfilter (productie)', query: bouwCqlQuery({ vanaf: '2019-01-01' }) }
+      ];
 
-      const r = await haal(url, { type: 'text' });
-      if (r.status !== 200) return { ok: false, detail: `HTTP ${r.status}` };
+      let laatsteGeslaagd = null;
 
-      const xml = String(r.data);
-      const diagnostic = xml.match(/<(?:\w+:)?message>([^<]+)</i);
-      if (diagnostic) return { ok: false, detail: `SRU-diagnostic: ${diagnostic[1]}` };
+      for (const stap of stappen) {
+        const uit = await sruProbe(stap.query);
 
-      const m = xml.match(/<(?:\w+:)?numberOfRecords>(\d+)/);
-      if (!m) return { ok: false, detail: 'geen numberOfRecords in het antwoord' };
+        if (!uit.ok) {
+          const tot_nu = laatsteGeslaagd
+            ? `Tot en met "${laatsteGeslaagd.naam}" werkte het wel (${laatsteGeslaagd.aantal} records).`
+            : 'Ook de simpelste query faalt, dus de API zelf is de oorzaak.';
+          return { ok: false, detail: `faalt bij "${stap.naam}": ${uit.fout}. ${tot_nu}` };
+        }
 
-      const aantal = parseInt(m[1], 10);
-      if (aantal === 0) {
-        return {
-          ok: false,
-          detail: 'query levert 0 records over de hele historie sinds 2019. ' +
-            'Dat is niet geloofwaardig: de query of de connectie klopt niet meer.'
-        };
+        if (uit.aantal === 0) {
+          return {
+            ok: false,
+            detail: `"${stap.naam}" levert 0 records. Over de hele historie is dat ` +
+              'niet geloofwaardig: dit deel van de query klopt niet meer.'
+          };
+        }
+
+        laatsteGeslaagd = { naam: stap.naam, aantal: uit.aantal };
       }
-      return { ok: true, detail: `${aantal} records sinds 2019-01-01` };
+
+      return { ok: true, detail: `${laatsteGeslaagd.aantal} records sinds 2019-01-01` };
     }
   },
 
