@@ -125,7 +125,7 @@ Draaien zonder dat er iemand — of iets — hoeft mee te kijken.
 | Workflow | Wanneer | Wat |
 | --- | --- | --- |
 | `ci.yml` | elke push en PR | `npm test` plus een laadtest van alle Cloud Functions |
-| `bronlinks.yml` | elke maandag 06:00 UTC | haalt elke bronlink echt op; opent of werkt een issue bij als er een 404 geeft |
+| `bronlinks.yml` | elke maandag 06:00 UTC | haalt elke bronlink echt op én controleert de kernbronnen; opent of werkt een issue bij als er een 404 geeft |
 
 De linkcheck is er omdat bronlinks stilletjes verlopen: ODRN fuseerde tot
 Omgevingsdienst Groene Metropool, RUD Zeeland zit op een domein mét koppelteken.
@@ -136,6 +136,12 @@ HTTP-controle — niet af te leiden uit een zoekindex.
 De laadtest in `ci.yml` vangt precies de fout die `runScraperNow` maandenlang
 stukmaakte: een aanroep zonder import valt pas om bij uitvoering, niet bij
 `node --check`.
+
+**De linkcheck faalt nu ook als hij niets heeft kunnen meten.** Draait hij in een
+omgeving zonder uitgaand netwerk, dan is elke URL "geblokkeerd", is het aantal
+kapotte links nul en eindigde hij groen — een controle die niets meet en zichzelf
+goedkeurt. Dat is precies de stille storing die hij hoort te vinden, dus nul
+bevestigde URL's geeft nu exitcode 1.
 
 ### Firebase
 
@@ -296,6 +302,56 @@ is vastgesteld beleid" en "hier is niets over gevonden" precies het verschil dat
 telt. Het dashboard hoort daarbij door te verwijzen naar de bronlink en de
 omgevingsdienst — het vervangt geen milieuhygiënische verklaring.
 
+### Kernbronnen
+
+`check-links.js` controleert de pagina's waar de **gebruiker** heen klikt.
+`check-bronnen.js` controleert de bronnen waar de **data** vandaan komt. Die
+tweede groep viel tot nu toe buiten elke controle:
+
+```bash
+node check-bronnen.js
+node check-bronnen.js --json > bronnen.json
+```
+
+| Bron | Waarom | Wat er gecontroleerd wordt |
+| --- | --- | --- |
+| PDOK Bestuurlijke Gebieden | canonieke gemeentelijst | plausibel aantal gemeenten, niet alleen HTTP 200 |
+| PDOK Locatieserver | het zoekveld in de frontend | levert treffers voor een bestaande plaatsnaam |
+| SRU officielebekendmakingen | enige bron die als vaststaand beleid geldt | `numberOfRecords` > 0 én records die écht te verwerken zijn |
+| `gemeenten.geojson` | kaartlaag en terugval voor de gemeentelijst | geldige JSON met een plausibel aantal features |
+| `/api/v1/gemeenten` | de data die het dashboard toont | volledige lijst, elke gemeente met bruikbare normen |
+| IPLO handelingskader | de bronlink onder het landelijk kader | pagina bestaat én noemt PFAS |
+
+> **De eerste run legde de sweep stil bloot.** Er zaten drie fouten achter
+> elkaar, en elk daarvan zag er van buiten uit als "er is niets gepubliceerd":
+>
+> 1. **Het endpoint was uitgefaseerd.** `zoek.officielebekendmakingen.nl/sru/Search`
+>    geeft HTTP 500 op élke query, ook op de simpelste. KOOP bedient dezelfde
+>    collectie via `repository.overheid.nl/sru`.
+> 2. **De verkeerde inhoud werd opgevraagd.** Axios stuurt uit zichzelf
+>    `Accept: application/json, text/plain, */*`. De API doet aan
+>    contentonderhandeling en gaf keurig JSON terug — een geldig antwoord op een
+>    vraag die niemand bedoelde te stellen, waar geen enkele XML-regex op past.
+>    `haalPagina` vraagt nu expliciet om XML, `haalDocumentTekst` om HTML.
+> 3. **De records werden niet uitgelezen.** Het element komt binnen als
+>    `<sru:recordData>` mét namespace-attribuut, en de vindplaats staat in
+>    `<gzd:itemUrl manifestation="html">`, niet in een `<url>`.
+>
+> Geen van drieën leverde ooit een foutmelding op. De sweep meldde "geen nieuwe
+> bekendmakingen gevonden" en alle gemeenten bleven op `landelijk-kader-aanname`
+> staan alsof er niets te vinden was — terwijl er sinds 2019 **992 publicaties**
+> op deze zoekopdracht matchen. Precies waarom deze controle op records kijkt en
+> niet op HTTP 200, en waarom ze de échte productiecode aanroept in plaats van
+> een nagebouwd verzoek: fout 2 en 3 zijn alleen zo te vinden.
+
+Deze bronnen falen allemaal **stil**. PDOK kan van pad veranderen, waarna
+`gemeentelijst.js` ongemerkt terugvalt op de geojson en de dekkingscontrole een
+verouderde lijst vergelijkt. De SRU-API antwoordt met HTTP 200 en nul records als
+de query niet meer klopt — niet te onderscheiden van "er is deze week niets
+gepubliceerd". Een hosting-deploy zonder `gemeenten.geojson` levert HTTP 200 met
+de HTML-fallback erin. Op de statuscode alleen zien die drie er gezond uit,
+daarom controleert dit script op bruikbare inhoud.
+
 ### Bronlinks
 
 `check-links.js` controleert of de links in `gemeente_mapping.json` bestaan:
@@ -324,12 +380,31 @@ verkeerde organisatie:
 Verder: `omgevingsdienstachterhoek.nl` → `odachterhoek.nl` en `odh.nl` →
 `omgevingsdiensthaaglanden.nl`.
 
-> **Belangrijke kanttekening bij de verificatie.** De links zijn gecontroleerd
-> tegen een zoekindex, niet door ze op te halen — de omgeving waarin dit werk is
-> gedaan had geen uitgaand netwerk naar die domeinen. Dat een URL in de index
-> staat is sterk bewijs dat de pagina bestaat, maar geen bevestigde HTTP 200.
-> Draai `node check-links.js` een keer vanaf een machine met normale
-> netwerktoegang om dit hard te maken.
+Die verificatie is inmiddels hard gemaakt: de wekelijkse `bronlinks.yml`-run van
+**10 augustus 2026** haalde alle unieke URL's op vanaf een gewone runner en kreeg
+op elk daarvan HTTP 200. Geen enkele bronlink was kapot of geblokkeerd.
+
+### Bij de juiste omgevingsdienst
+
+Een bronlink kan HTTP 200 geven en tóch de verkeerde organisatie zijn. Dat is een
+ander soort fout dan een 404, en met geen enkele HTTP-controle te vinden — de
+pagina bestaat immers gewoon. Vier groepen stonden verkeerd:
+
+| Gemeenten | Stond op | Hoort bij | Waarom |
+| --- | --- | --- | --- |
+| 16 in Noord-Holland Noord (Alkmaar, Den Helder, Hoorn, Texel, …) | ODNZKG | `odnhn.nl` | ODNZKG bedient 8 gemeenten rond Amsterdam, niet heel Noord-Holland |
+| 7 in Zaanstreek-Waterland en Uitgeest | ODNZKG | `odijmond.nl` | OD IJmond voert het bodembeheer voor deze gemeenten uit |
+| 26 in de provincie Utrecht | ODRU | `odu.nl` | ODRU en RUD Utrecht zijn per 1-1-2026 gefuseerd tot Omgevingsdienst Utrecht |
+| Barneveld, Ede, Nijkerk, Scherpenzeel, Wageningen | OD Veluwe / ODRU / Groene Metropool | `oddevallei.nl` | deze vijf vormen samen het bodembeheergebied van Omgevingsdienst de Vallei |
+
+Na de correctie komen de aantallen precies uit op de deelnemerslijsten van de
+diensten zelf: ODNZKG 8, OD IJmond 14, OD NHN 16, ODU 26, OddV 5.
+
+Twee tests bewaken dit, omdat de linkcheck het niet kan zien: één met de
+deelnemerslijst per dienst, en één die de mapping afwijst zodra er een domein van
+een opgeheven organisatie in staat (`odrn.nl`, `odru.nl`, `rudutrecht.nl`,
+`omgevingsdienst.nl`, …). Een gefuseerde dienst laat zijn oude domein vaak nog
+jaren staan; zonder zo'n lijst blijft die link stilletjes "werken".
 
 ### Herindelingen
 

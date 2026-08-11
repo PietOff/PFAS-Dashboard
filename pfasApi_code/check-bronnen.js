@@ -1,0 +1,437 @@
+/**
+ * Controleert de kernbronnen waar het dashboard op draait.
+ *
+ * `check-links.js` controleert de bronlinks per gemeente — de pagina's waar een
+ * gebruiker naartoe geklikt wordt. Dit script controleert de bronnen waar de
+ * data zelf vandaan komt. Die twee zijn niet hetzelfde, en tot nu toe werd
+ * alleen de eerste groep bewaakt.
+ *
+ * Waarom dit nodig is: elk van deze bronnen faalt stil. PDOK kan van pad
+ * veranderen, waarna `gemeentelijst.js` ongemerkt terugvalt op de geojson en
+ * de dekkingscontrole een verouderde lijst gaat vergelijken. De SRU-API
+ * antwoordt met HTTP 200 en nul records als de query niet meer klopt — precies
+ * hoe "er is deze week niets gepubliceerd" eruitziet. Geen van beide levert een
+ * foutmelding op waar iemand op wacht.
+ *
+ * Daarom controleert dit script niet op status 200 maar op bruikbare inhoud:
+ * levert PDOK een plausibel aantal gemeenten, geeft de SRU-query echt records
+ * terug, staat er in de geojson wat erin hoort te staan.
+ *
+ * Gebruik:
+ *   node check-bronnen.js
+ *   node check-bronnen.js --json > bronnen.json
+ */
+
+const axios = require('axios');
+const { bouwCqlQuery, zoekBekendmakingen, haalDocumentTekst, haalPagina, SRU_BASE } = require('./checkBekendmakingen');
+const { MIN_GEMEENTEN, MAX_GEMEENTEN } = require('./gemeentelijst');
+
+const alsJson = process.argv.includes('--json');
+
+const SITE = 'https://pfas-dashboard-nl-a808d.web.app';
+const UA = 'PFASDashboard/1.0 (bronbewaking)';
+
+// Niet hier hardcoderen: het endpoint komt uit de productiecode, zodat deze
+// controle altijd meet wat de sweep echt gebruikt.
+const SRU_IN_GEBRUIK = SRU_BASE;
+
+// De KOOP-endpoints die deze collectie leveren. Valt het endpoint in gebruik
+// uit, dan gaat hetzelfde verzoek langs de andere — niet om stilletjes om te
+// schakelen, maar om te kunnen zeggen of de storing bij KOOP zit of alleen bij
+// dit ene adres. Dat verschil bepaalt of je moet wachten of moet ingrijpen.
+const SRU_BEKEND = [
+  { naam: 'repository.overheid.nl (v1.2)', basis: 'https://repository.overheid.nl/sru', versie: '1.2' },
+  { naam: 'repository.overheid.nl (v2.0)', basis: 'https://repository.overheid.nl/sru', versie: '2.0' },
+  { naam: 'zoek.officielebekendmakingen.nl', basis: 'https://zoek.officielebekendmakingen.nl/sru/Search', versie: '1.2' }
+];
+
+async function haal(url, { type = 'json', timeout = 30000 } = {}) {
+  return axios.get(url, {
+    timeout,
+    responseType: type === 'json' ? 'json' : 'text',
+    // De SRU-API en de geojson leveren tekst; forceer geen JSON-parse daarop.
+    transformResponse: type === 'json' ? undefined : [(d) => d],
+    headers: { 'User-Agent': UA, 'Accept': type === 'json' ? 'application/json' : '*/*' },
+    validateStatus: () => true
+  });
+}
+
+/**
+ * Voert één SRU-zoekvraag uit en geeft het aantal records terug.
+ *
+ * Een losse 5xx zegt niets — die komt bij KOOP met enige regelmaat voorbij.
+ * Pas als het na een paar pogingen nog steeds misgaat is er iets aan de hand,
+ * anders zou deze controle wekelijks vals alarm slaan en binnen een maand
+ * genegeerd worden.
+ */
+async function sruProbe(query, { pogingen = 3, basis = SRU_IN_GEBRUIK, versie = '1.2' } = {}) {
+  const url = `${basis}?version=${versie}&operation=searchRetrieve&x-connection=oep` +
+    `&startRecord=1&maximumRecords=1&query=${encodeURIComponent(query)}`;
+
+  let laatste = 'onbekend';
+
+  for (let poging = 1; poging <= pogingen; poging++) {
+    let r;
+    try {
+      r = await haal(url, { type: 'text' });
+    } catch (err) {
+      laatste = `niet bereikbaar (${err.code || err.message})`;
+      continue;
+    }
+
+    if (r.status >= 500) {
+      laatste = `HTTP ${r.status}`;
+      // Even wachten; een overbelaste index herstelt vaak binnen seconden.
+      await new Promise(res => setTimeout(res, 2000 * poging));
+      continue;
+    }
+    if (r.status !== 200) return { ok: false, fout: `HTTP ${r.status}` };
+
+    const xml = String(r.data);
+
+    // SRU meldt fouten via <diagnostic> mét HTTP 200. Zonder deze check ziet
+    // een afgewezen query eruit als "geen resultaten".
+    const diagnostic = xml.match(/<(?:\w+:)?message>([^<]+)</i);
+    if (diagnostic) return { ok: false, fout: `SRU-diagnostic: ${diagnostic[1]}` };
+
+    const m = xml.match(/<(?:\w+:)?numberOfRecords>(\d+)/);
+    if (!m) return { ok: false, fout: 'geen numberOfRecords in het antwoord' };
+
+    return { ok: true, aantal: parseInt(m[1], 10) };
+  }
+
+  return { ok: false, fout: `${laatste} na ${pogingen} pogingen` };
+}
+
+/**
+ * Haalt één SRU-antwoord op en beschrijft hoe het is opgebouwd.
+ *
+ * Bedoeld voor het geval de API wél records telt maar de parser er geen uit
+ * haalt. Dan is de vraag welke elementnamen er echt in staan; die staan nergens
+ * in de documentatie zo beschreven en zijn zonder netwerktoegang niet te raden.
+ */
+async function xmlVorm(query) {
+  // Twee keer hetzelfde verzoek, alleen met een andere paginagrootte. De
+  // productiecode vraagt er 100 op; blijkt het antwoord daarop anders te zijn
+  // dan op een kleine pagina, dan zit het verschil daar en niet in de parser.
+  const delen = [];
+
+  for (const max of [2, 100]) {
+    const url = `${SRU_IN_GEBRUIK}?version=1.2&operation=searchRetrieve&x-connection=oep` +
+      `&startRecord=1&maximumRecords=${max}&query=${encodeURIComponent(query)}`;
+
+    try {
+      const r = await haal(url, { type: 'text' });
+      const xml = String(r.data);
+      // Open- én sluittag apart tellen. Zijn het er evenveel open maar matcht
+      // het paar niet, dan wijkt de sluittag af en is dát de reden dat de
+      // parser niets vindt.
+      const open = (xml.match(/<(?:\w+:)?recordData[^>]*>/g) || []).length;
+      const sluit = (xml.match(/<\/(?:\w+:)?recordData>/g) || []).length;
+      const paren = (xml.match(/<(?:\w+:)?recordData[^>]*>[\s\S]*?<\/(?:\w+:)?recordData>/g) || []).length;
+
+      // Het stuk rond het eerste einde van een record: daar staat de sluittag
+      // zoals hij er echt uitziet.
+      const eind = xml.search(/<\/(?:\w+:)?recordData/);
+      const staart = eind === -1
+        ? xml.slice(-120).replace(/\s+/g, ' ')
+        : xml.slice(Math.max(0, eind - 60), eind + 60).replace(/\s+/g, ' ');
+
+      delen.push(
+        `max=${max}: HTTP ${r.status}, ${xml.length} tekens, ` +
+        `recordData open=${open} sluit=${sluit} paren=${paren}, rond de sluittag "${staart}"`
+      );
+    } catch (err) {
+      delen.push(`max=${max}: niet op te halen (${err.code || err.message})`);
+    }
+  }
+
+  // Dezelfde vraag nog één keer, maar nu met exact de axios-opties van
+  // haalPagina. Levert dit een ander resultaat dan hierboven, dan zit het
+  // verschil in de aanroep en niet in de XML.
+  try {
+    const url = `${SRU_IN_GEBRUIK}?version=1.2&operation=searchRetrieve&x-connection=oep` +
+      `&startRecord=1&maximumRecords=100&query=${encodeURIComponent(query)}`;
+    const r = await axios.get(url, {
+      timeout: 30000,
+      responseType: 'text',
+      transformResponse: [(d) => d],
+      headers: { 'User-Agent': 'PFASDashboard/1.0 (overheid-monitoring)' }
+    });
+    const xml = String(r.data);
+    const paren = (xml.match(/<(?:\w+:)?recordData[^>]*>[\s\S]*?<\/(?:\w+:)?recordData>/g) || []).length;
+    delen.push(`productie-opties: type ${typeof r.data}, ${xml.length} tekens, ${paren} paren`);
+  } catch (err) {
+    delen.push(`productie-opties: fout (${err.code || err.message})`);
+  }
+
+  // En tot slot de productiefunctie zelf. Gooit hij een fout, dan is dat een
+  // ander verhaal dan "nul records"; dat onderscheid is hier niet af te leiden
+  // uit de uitkomst van zoekBekendmakingen.
+  try {
+    const p = await haalPagina(query, 1);
+    delen.push(`haalPagina zelf: ${p.records.length} records, totaal ${p.totaal}`);
+  } catch (err) {
+    delen.push(`haalPagina zelf: gooit "${err.message}"`);
+  }
+
+  return delen.join(' || ');
+}
+
+/**
+ * Elke controle geeft { ok, detail } terug. `ok: false` laat het script falen;
+ * een controle die zichzelf niet kan uitvoeren geeft dat expliciet aan in
+ * `detail` in plaats van stilletjes te slagen.
+ */
+const CONTROLES = [
+  {
+    naam: 'PDOK Bestuurlijke Gebieden (gemeentelijst)',
+    waarom: 'primaire bron voor de canonieke gemeentelijst',
+    async run() {
+      const url = 'https://api.pdok.nl/kadaster/bestuurlijkegebieden/ogc/v1/collections/' +
+        'gemeentegebied/items?f=json&limit=500';
+      const r = await haal(url);
+      if (r.status !== 200) return { ok: false, detail: `HTTP ${r.status}` };
+
+      const namen = (r.data.features || [])
+        .map(f => f.properties && (f.properties.naam || f.properties.identificatie))
+        .filter(Boolean);
+      const uniek = new Set(namen.map(n => String(n).trim()));
+
+      if (uniek.size < MIN_GEMEENTEN || uniek.size > MAX_GEMEENTEN) {
+        return {
+          ok: false,
+          detail: `${uniek.size} gemeenten — buiten de marge ${MIN_GEMEENTEN}-${MAX_GEMEENTEN}. ` +
+            'Het API-formaat is waarschijnlijk gewijzigd; gemeentelijst.js valt nu terug op de geojson.'
+        };
+      }
+      return { ok: true, detail: `${uniek.size} gemeenten` };
+    }
+  },
+
+  {
+    naam: 'PDOK Locatieserver (zoekveld frontend)',
+    waarom: 'de zoekfunctie in het dashboard bevraagt deze API rechtstreeks',
+    async run() {
+      const url = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q=' +
+        encodeURIComponent('Gouda');
+      const r = await haal(url);
+      if (r.status !== 200) return { ok: false, detail: `HTTP ${r.status}` };
+      const gevonden = r.data?.response?.numFound;
+      if (!gevonden) return { ok: false, detail: 'geen resultaten voor een bestaande plaatsnaam' };
+      return { ok: true, detail: `${gevonden} resultaten voor "Gouda"` };
+    }
+  },
+
+  {
+    naam: 'SRU officielebekendmakingen.nl',
+    waarom: 'enige bron die als vaststaand beleid mag gelden',
+    async run() {
+      // De query wordt in stappen opgebouwd. Faalt de API, dan wil je weten of
+      // hij plat ligt of dat juist ónze query wordt afgewezen — dat is het
+      // verschil tussen wachten en repareren. Zonder deze opbouw levert een
+      // kapotte productie-query dezelfde melding op als een storing bij KOOP.
+      const stappen = [
+        { naam: 'API bereikbaar', query: 'c.product-area=="officielepublicaties"' },
+        { naam: '+ publicatiebladen', query: bouwCqlQuery().split(' and ').slice(0, 2).join(' and ') },
+        { naam: '+ PFAS- en bodemtermen', query: bouwCqlQuery() },
+        { naam: '+ datumfilter (productie)', query: bouwCqlQuery({ vanaf: '2019-01-01' }) }
+      ];
+
+      let laatsteGeslaagd = null;
+
+      for (const stap of stappen) {
+        const uit = await sruProbe(stap.query);
+
+        if (!uit.ok) {
+          const tot_nu = laatsteGeslaagd
+            ? `Tot en met "${laatsteGeslaagd.naam}" werkte het wel (${laatsteGeslaagd.aantal} records).`
+            : 'Ook de simpelste query faalt, dus de query is niet de oorzaak.';
+
+          // Ligt het aan dit endpoint of aan KOOP? Datzelfde verzoek langs de
+          // alternatieven leggen beantwoordt dat in één run.
+          let vergelijking = '';
+          if (!laatsteGeslaagd) {
+            const uitkomsten = [];
+            for (const alt of SRU_BEKEND.filter(a => a.basis !== SRU_IN_GEBRUIK)) {
+              const a = await sruProbe(stap.query, { pogingen: 1, basis: alt.basis, versie: alt.versie });
+              uitkomsten.push(`${alt.naam}: ${a.ok ? `werkt (${a.aantal} records)` : a.fout}`);
+            }
+            const werkt = uitkomsten.some(u => u.includes('werkt'));
+            vergelijking = ` Alternatieven — ${uitkomsten.join('; ')}.` +
+              (werkt
+                ? ' Een alternatief antwoordt wél, dus dit is geen KOOP-brede storing maar een endpoint dat verhuisd of uitgefaseerd is.'
+                : ' Geen enkel endpoint antwoordt; dit lijkt een storing bij KOOP.');
+          }
+
+          return { ok: false, detail: `faalt bij "${stap.naam}": ${uit.fout}. ${tot_nu}${vergelijking}` };
+        }
+
+        if (uit.aantal === 0) {
+          return {
+            ok: false,
+            detail: `"${stap.naam}" levert 0 records. Over de hele historie is dat ` +
+              'niet geloofwaardig: dit deel van de query klopt niet meer.'
+          };
+        }
+
+        laatsteGeslaagd = { naam: stap.naam, aantal: uit.aantal };
+      }
+
+      // Een record tellen is niet hetzelfde als een record kunnen gebruiken.
+      // De sweep leest identifier en url uit de XML; verandert dat formaat, dan
+      // blijft numberOfRecords keurig kloppen terwijl er niets verwerkt wordt.
+      // Daarom hier de echte productiecode, niet een nagebouwd verzoek.
+      const { records } = await zoekBekendmakingen({ vanaf: '2019-01-01', maxRecords: 5 });
+      if (!records.length) {
+        // De API telt records maar de parser vindt ze niet: het XML-formaat wijkt
+        // af. Zonder de echte elementnamen is dat giswerk, dus die worden hier
+        // opgehaald en gemeld in plaats van alleen "levert er geen".
+        return {
+          ok: false,
+          detail: 'de API telt records maar zoekBekendmakingen levert er geen. ' +
+            await xmlVorm(stappen[stappen.length - 1].query)
+        };
+      }
+
+      const bruikbaar = records.filter(r => r.identifier && r.url);
+      if (!bruikbaar.length) {
+        return {
+          ok: false,
+          detail: `${records.length} records opgehaald, maar geen enkele met identifier én url — ` +
+            'het XML-formaat wijkt af van wat haalPagina verwacht'
+        };
+      }
+
+      // Een vindbaar record is nog geen leesbaar besluit. De sweep haalt daarna
+      // de tekst op; blijft die leeg, dan wordt er niets geanalyseerd en staat
+      // er alsnog niets in het dashboard.
+      const tekst = await haalDocumentTekst(bruikbaar[0].url);
+      if (!tekst || tekst.length < 200) {
+        return {
+          ok: false,
+          detail: `records zijn vindbaar, maar de tekst van ${bruikbaar[0].identifier} ` +
+            `is niet op te halen (${bruikbaar[0].url})`
+        };
+      }
+
+      return {
+        ok: true,
+        detail: `${laatsteGeslaagd.aantal} records sinds 2019-01-01; ` +
+          `${bruikbaar.length}/${records.length} verwerkbaar; ` +
+          `documenttekst leesbaar (${bruikbaar[0].identifier}, ${tekst.length} tekens)`
+      };
+    }
+  },
+
+  {
+    naam: 'gemeenten.geojson (eigen hosting)',
+    waarom: 'kaartlaag van de frontend en terugval voor de gemeentelijst',
+    async run() {
+      const r = await haal(`${SITE}/gemeenten.geojson`, { type: 'text' });
+      if (r.status !== 200) return { ok: false, detail: `HTTP ${r.status}` };
+
+      let data;
+      try {
+        data = JSON.parse(r.data);
+      } catch {
+        // Een hosting-deploy zonder dit bestand levert de SPA-fallback: HTTP 200
+        // met HTML erin. Zonder deze parse ziet dat eruit als een geslaagde check.
+        return { ok: false, detail: 'antwoord is geen geldige JSON (waarschijnlijk de HTML-fallback)' };
+      }
+
+      const n = (data.features || []).length;
+      if (n < MIN_GEMEENTEN || n > MAX_GEMEENTEN) {
+        return { ok: false, detail: `${n} features — buiten de marge ${MIN_GEMEENTEN}-${MAX_GEMEENTEN}` };
+      }
+      return { ok: true, detail: `${n} features` };
+    }
+  },
+
+  {
+    naam: 'API /api/v1/gemeenten',
+    waarom: 'de data die het dashboard toont',
+    async run() {
+      const r = await haal(`${SITE}/api/v1/gemeenten`);
+      if (r.status !== 200) return { ok: false, detail: `HTTP ${r.status}` };
+
+      const lijst = Array.isArray(r.data) ? r.data : (r.data.gemeenten || r.data.data);
+      if (!Array.isArray(lijst)) return { ok: false, detail: 'antwoord is geen lijst gemeenten' };
+      if (lijst.length < MIN_GEMEENTEN) {
+        return { ok: false, detail: `${lijst.length} gemeenten — het dashboard heeft gaten` };
+      }
+
+      const zonderNormen = lijst.filter(g => !g || !g.pfos || typeof g.pfos.wonen !== 'number');
+      if (zonderNormen.length) {
+        return { ok: false, detail: `${zonderNormen.length} van de ${lijst.length} gemeenten zonder bruikbare PFOS-waarde` };
+      }
+      return { ok: true, detail: `${lijst.length} gemeenten met normen` };
+    }
+  },
+
+  {
+    naam: 'IPLO handelingskader PFAS',
+    waarom: 'de bronlink onder het landelijk kader',
+    async run() {
+      const url = 'https://iplo.nl/thema/bodem/regelgeving/hergebruik-bouwstoffen-grond-of-baggerspecie/' +
+        'kwaliteitseisen-toepassen-grond-baggerspecie/handelingskader-pfas/';
+      const r = await haal(url, { type: 'text' });
+      if (r.status !== 200) return { ok: false, detail: `HTTP ${r.status}` };
+      if (!/pfas/i.test(String(r.data))) {
+        return { ok: false, detail: 'pagina bestaat maar noemt PFAS niet — vermoedelijk doorgestuurd' };
+      }
+      return { ok: true, detail: 'bereikbaar en noemt PFAS' };
+    }
+  }
+];
+
+async function main() {
+  // In --json modus is stdout het rapport en niets anders. De productiecode die
+  // hieronder aangeroepen wordt schrijft haar voortgang naar console.log, en dat
+  // beland midden in de JSON — het bestand is daarna onleesbaar en het rapport
+  // verdwijnt zonder dat er iets over de bronnen gezegd wordt. Alle losse
+  // uitvoer gaat daarom naar stderr; alleen de JSON zelf gaat naar stdout.
+  if (alsJson) console.log = (...args) => console.error(...args);
+
+  const uitkomsten = [];
+
+  for (const c of CONTROLES) {
+    let uitkomst;
+    try {
+      uitkomst = await c.run();
+    } catch (err) {
+      uitkomst = { ok: false, detail: `niet bereikbaar (${err.code || err.message})` };
+    }
+    uitkomsten.push({ naam: c.naam, waarom: c.waarom, ...uitkomst });
+    console.error(`${uitkomst.ok ? '✅' : '❌'} ${c.naam.padEnd(42)} ${uitkomst.detail}`);
+  }
+
+  const kapot = uitkomsten.filter(u => !u.ok);
+
+  console.error(`\n${'='.repeat(64)}`);
+  console.error(`Kernbronnen gecontroleerd: ${uitkomsten.length}`);
+  console.error(`In orde:                   ${uitkomsten.length - kapot.length}`);
+  console.error(`Probleem:                  ${kapot.length}`);
+  console.error(`${'='.repeat(64)}`);
+
+  if (kapot.length) {
+    console.error('\nDeze bronnen leveren geen bruikbare data:');
+    for (const k of kapot) console.error(`  • ${k.naam} — ${k.detail}\n    (${k.waarom})`);
+  }
+
+  if (alsJson) {
+    // Niet via console.log: die is hierboven omgeleid naar stderr.
+    process.stdout.write(JSON.stringify({
+      gecontroleerd: uitkomsten.length,
+      kapot: kapot.length,
+      uitkomsten
+    }, null, 2) + '\n');
+  }
+
+  process.exit(kapot.length > 0 ? 1 : 0);
+}
+
+main().catch(err => {
+  console.error('Fout:', err.message);
+  process.exit(2);
+});

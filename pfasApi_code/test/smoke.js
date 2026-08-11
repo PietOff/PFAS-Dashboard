@@ -338,6 +338,174 @@ test('geen enkele gemeente heeft alleen een homepage als bron', () => {
 });
 
 // ------------------------------------------------------------------
+test('geen enkele gemeente wijst naar een opgeheven omgevingsdienst', () => {
+  // Een gefuseerde dienst laat zijn oude domein vaak nog jaren staan. De
+  // linkcheck ziet dan HTTP 200 en meldt niets, terwijl de gemeente naar een
+  // organisatie wijst die het beleid niet meer maakt. Alleen een expliciete
+  // lijst vangt dit.
+  const mapping = require('../gemeente_mapping.json');
+  const opgeheven = {
+    'odrn.nl': 'ODRN ging per 1-1-2026 op in Omgevingsdienst Groene Metropool (odgroenemetropool.nl)',
+    'odregioarnhem.nl': 'OD Regio Arnhem ging per 1-1-2026 op in Omgevingsdienst Groene Metropool',
+    'odru.nl': 'ODRU ging per 1-1-2026 op in Omgevingsdienst Utrecht (odu.nl)',
+    'rudutrecht.nl': 'RUD Utrecht ging per 1-1-2026 op in Omgevingsdienst Utrecht (odu.nl)',
+    'omgevingsdienst.nl': 'dit is de landelijke koepel Omgevingsdienst NL, geen uitvoerende dienst',
+    'omgevingsdienstachterhoek.nl': 'heet nu odachterhoek.nl',
+    'odh.nl': 'heet nu omgevingsdiensthaaglanden.nl',
+    'rudzeeland.nl': 'het domein heeft een koppelteken: rud-zeeland.nl'
+  };
+
+  const fout = [];
+  for (const [gemeente, url] of Object.entries(mapping)) {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    if (opgeheven[host]) fout.push(`${gemeente} → ${host} (${opgeheven[host]})`);
+  }
+
+  assert.deepStrictEqual(fout, [], 'verouderde omgevingsdiensten in de mapping:\n  ' + fout.join('\n  '));
+});
+
+// ------------------------------------------------------------------
+test('gemeenten staan bij de omgevingsdienst die hun beleid maakt', () => {
+  // Een bronlink kan prima HTTP 200 geven en tóch de verkeerde organisatie zijn.
+  // ODNZKG stond ooit op 31 gemeenten terwijl de dienst er 8 bedient; de rest
+  // hoort bij OD Noord-Holland Noord en OD IJmond. Zulke fouten zijn met geen
+  // enkele HTTP-controle te vinden, dus de deelnemerslijsten staan hier vast.
+  const mapping = require('../gemeente_mapping.json');
+  const hostVan = (g) => new URL(mapping[g]).hostname.replace(/^www\./, '');
+
+  // Bron: de eigen deelnemerspagina's van de diensten.
+  const deelnemers = {
+    'odnzkg.nl': ['Aalsmeer', 'Amstelveen', 'Amsterdam', 'Diemen', 'Haarlemmermeer',
+      'Ouder-Amstel', 'Uithoorn', 'Zaanstad'],
+    'odnhn.nl': ['Alkmaar', 'Bergen (NH.)', 'Castricum', 'Den Helder', 'Dijk en Waard',
+      'Drechterland', 'Enkhuizen', 'Heiloo', 'Hollands Kroon', 'Hoorn', 'Koggenland',
+      'Medemblik', 'Opmeer', 'Schagen', 'Stede Broec', 'Texel'],
+    'odijmond.nl': ['Beverwijk', 'Bloemendaal', 'Edam-Volendam', 'Haarlem', 'Heemskerk',
+      'Heemstede', 'Landsmeer', 'Oostzaan', 'Purmerend', 'Uitgeest', 'Velsen',
+      'Waterland', 'Wormerland', 'Zandvoort'],
+    'oddevallei.nl': ['Barneveld', 'Ede', 'Nijkerk', 'Scherpenzeel', 'Wageningen']
+  };
+
+  const fout = [];
+  for (const [host, gemeenten] of Object.entries(deelnemers)) {
+    for (const g of gemeenten) {
+      if (!(g in mapping)) { fout.push(`${g} ontbreekt in de mapping`); continue; }
+      if (hostVan(g) !== host) fout.push(`${g} → ${hostVan(g)}, hoort bij ${host}`);
+    }
+    // De dienst mag ook niet méér gemeenten toebedeeld krijgen dan hij bedient.
+    const toegewezen = Object.keys(mapping).filter(g => hostVan(g) === host);
+    const teveel = toegewezen.filter(g => !gemeenten.includes(g));
+    for (const g of teveel) fout.push(`${g} → ${host}, maar die dienst bedient die gemeente niet`);
+  }
+
+  assert.deepStrictEqual(fout, [], 'gemeenten bij de verkeerde omgevingsdienst:\n  ' + fout.join('\n  '));
+});
+
+// ------------------------------------------------------------------
+test('de SRU-bron wijst naar het endpoint dat KOOP nog bedient', () => {
+  // zoek.officielebekendmakingen.nl/sru/Search geeft HTTP 500 op élke query,
+  // ook de simpelste. Dat was hier niet aan te zien: een sweep zonder records
+  // meldt "geen nieuwe bekendmakingen", precies zoals een rustige week. De
+  // enige bron die als vastgesteld beleid geldt viel zo stil weg.
+  const { SRU_BASE } = require('../checkBekendmakingen');
+  assert.ok(!/zoek\.officielebekendmakingen\.nl\/sru/.test(SRU_BASE),
+    'SRU_BASE staat op het uitgefaseerde endpoint dat op elke query 500 geeft');
+  assert.ok(/^https:\/\//.test(SRU_BASE), 'SRU_BASE moet een https-endpoint zijn');
+
+  // SRU levert XML en de bekendmakingen leveren HTML. Laat axios die antwoorden
+  // ongemoeid: standaard probeert hij er JSON van te maken en dan is het geen
+  // string meer, waarna elke .match() erop omvalt.
+  const cb = fs.readFileSync(path.join(wortel, 'checkBekendmakingen.js'), 'utf8');
+  const rauw = cb.match(/transformResponse: \[\(d\) => d\]/g) || [];
+  assert.strictEqual(rauw.length, 2,
+    'haalPagina en haalDocumentTekst moeten allebei het rauwe antwoord houden');
+
+  // En allebei moeten ze zelf om XML/HTML vragen. Zonder Accept-header stuurt
+  // axios `application/json` vooraan, doet de API aan contentonderhandeling en
+  // komt er JSON terug waar geen enkele XML-regex op past — nul records, en dat
+  // is niet te onderscheiden van "er is niets gepubliceerd".
+  const accepts = cb.match(/'Accept': '[^']+'/g) || [];
+  assert.strictEqual(accepts.length, 2,
+    'haalPagina en haalDocumentTekst moeten allebei een expliciete Accept-header sturen');
+  assert.ok(accepts.some(a => /xml/.test(a)), 'de SRU-aanroep vraagt niet om XML');
+  assert.ok(!accepts.some(a => /^'Accept': 'application\/json/.test(a)),
+    'geen van beide mag JSON vooraan zetten');
+
+  // check-bronnen.js moet het endpoint uit de productiecode overnemen, anders
+  // controleert het iets anders dan de sweep gebruikt.
+  const bron = fs.readFileSync(path.join(wortel, 'check-bronnen.js'), 'utf8');
+  assert.ok(/SRU_IN_GEBRUIK = SRU_BASE/.test(bron),
+    'check-bronnen.js hardcodeert het SRU-endpoint in plaats van het over te nemen');
+});
+
+// ------------------------------------------------------------------
+test('een SRU-record met namespaces en attributen wordt uitgelezen', () => {
+  // Het echte antwoord van KOOP: <sru:recordData> mét namespace-attribuut, en
+  // de vindplaats als <gzd:itemUrl manifestation="...">, niet als <url>. De
+  // oude regex eiste `recordData>` zonder attributen en vond dus niets — de
+  // sweep meldde dan "geen nieuwe bekendmakingen" terwijl numberOfRecords
+  // gewoon een getal boven nul teruggaf.
+  const cb = fs.readFileSync(path.join(wortel, 'checkBekendmakingen.js'), 'utf8');
+
+  const recordRegex = cb.match(/const recordRegex = (\/.*\/g);/);
+  assert.ok(recordRegex, 'recordRegex niet gevonden in checkBekendmakingen.js');
+
+  const xml =
+    '<sru:recordData xmlns:gzd="http://standaarden.overheid.nl/sru">' +
+    '<gzd:gzd><gzd:originalData><dcterms:identifier>gmb-2024-1</dcterms:identifier>' +
+    '<gzd:itemUrl manifestation="xml">https://x/a.xml</gzd:itemUrl>' +
+    '<gzd:itemUrl manifestation="html">https://x/a.html</gzd:itemUrl>' +
+    '</gzd:originalData></gzd:gzd></sru:recordData>';
+
+  const re = new RegExp(recordRegex[1].slice(1, -2), 'g');
+  const treffer = re.exec(xml);
+  assert.ok(treffer, 'recordData met een namespace-attribuut wordt niet herkend');
+
+  // En de HTML-versie moet gekozen worden: die kan haalDocumentTekst lezen.
+  const urls = [...treffer[1].matchAll(/<(?:\w+:)?itemUrl[^>]*>([^<]+)<\//gi)].map(m => m[1]);
+  assert.strictEqual(urls.find(u => /\.html?$/i.test(u)), 'https://x/a.html');
+  assert.ok(/itemUrl/.test(cb), 'checkBekendmakingen.js leest itemUrl niet uit');
+});
+
+// ------------------------------------------------------------------
+test('de linkcheck slaagt niet als hij niets heeft kunnen meten', () => {
+  // Draait de check in een omgeving zonder uitgaand netwerk, dan is elke URL
+  // "geblokkeerd", is het aantal kapotte links nul en eindigt hij groen — een
+  // controle die niets meet die zichzelf goedkeurt. Precies de stille storing
+  // die dit script hoort te vinden.
+  const bron = fs.readFileSync(path.join(wortel, 'check-links.js'), 'utf8');
+  assert.ok(/nietsGemeten/.test(bron), 'check-links.js kent geen nietsGemeten-controle');
+  assert.ok(/process\.exit\([^)]*nietsGemeten/.test(bron),
+    'nietsGemeten laat de check niet falen');
+});
+
+// ------------------------------------------------------------------
+test('de kernbronnen worden op bruikbare inhoud gecontroleerd', () => {
+  // check-links.js dekt de bronlinks per gemeente. De bronnen waar de data zelf
+  // vandaan komt vielen buiten elke controle: die geven HTTP 200 terwijl ze nul
+  // bruikbare records leveren.
+  const bron = fs.readFileSync(path.join(wortel, 'check-bronnen.js'), 'utf8');
+
+  for (const nodig of ['api.pdok.nl', 'locatieserver', 'sru/Search', 'gemeenten.geojson',
+    '/api/v1/gemeenten', 'iplo.nl']) {
+    assert.ok(bron.includes(nodig), `check-bronnen.js controleert ${nodig} niet`);
+  }
+
+  // Status 200 is niet genoeg: een lege SRU-respons en de HTML-fallback van de
+  // hosting zijn allebei "geslaagd" als je alleen naar de statuscode kijkt.
+  assert.ok(/numberOfRecords/.test(bron), 'de SRU-check kijkt niet naar het aantal records');
+  assert.ok(/JSON\.parse/.test(bron), 'de geojson-check vangt de HTML-fallback niet af');
+
+  // In --json modus is stdout het rapport. De productiecode die wordt
+  // aangeroepen schrijft voortgang naar console.log; belandt dat in de JSON, dan
+  // is het rapport onleesbaar en verdwijnt de uitkomst zonder foutmelding.
+  assert.ok(/console\.log = /.test(bron),
+    'check-bronnen.js leidt console.log niet om; voortgang van de productiecode vervuilt de JSON');
+  assert.ok(/process\.stdout\.write\(JSON\.stringify/.test(bron),
+    'het JSON-rapport moet rechtstreeks naar stdout, niet via de omgeleide console.log');
+});
+
+// ------------------------------------------------------------------
 test('beoordeelAudit signaleert de stille storingen', () => {
   const { beoordeelAudit } = require('../audit');
 
@@ -404,6 +572,10 @@ test('de CI-workflows draaien de tests en de linkcheck', () => {
   // De linkcheck moet periodiek draaien, niet alleen op verzoek.
   assert.ok(/schedule:/.test(links) && /cron:/.test(links), 'linkcheck heeft geen schema');
   assert.ok(links.includes('check-links.js'), 'linkcheck draait het script niet');
+  // De kernbronnen falen stil; ze horen in dezelfde wekelijkse controle.
+  assert.ok(links.includes('check-bronnen.js'), 'de kernbronnen worden niet gecontroleerd');
+  assert.ok(/steps\.bronnen\.outcome == 'failure'/.test(links),
+    'een uitgevallen kernbron laat de workflow niet falen');
 });
 
 // ------------------------------------------------------------------

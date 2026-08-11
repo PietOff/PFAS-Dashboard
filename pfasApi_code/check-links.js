@@ -98,15 +98,31 @@ async function main() {
 
   const kapot = resultaten.filter(r => r.oordeel === 'kapot');
   const geblokkeerd = resultaten.filter(r => r.oordeel === 'geblokkeerd');
+  const ok = resultaten.filter(r => r.oordeel === 'ok');
   const gemeentenKapot = kapot.reduce((n, r) => n + r.gemeenten.length, 0);
+
+  // Geen enkele URL bevestigd betekent niet "alles in orde", het betekent dat
+  // deze run niets heeft gemeten — een afgesloten netwerk, een proxy die alles
+  // met 403 beantwoordt, of DNS die nergens komt. Zonder deze controle eindigt
+  // zo'n run met "Kapot: 0" en exitcode 0, en dat leest als groen. Precies de
+  // stille storing die deze check hoort te vinden.
+  const nietsGemeten = resultaten.length > 0 && ok.length === 0;
 
   console.error(`\n${'='.repeat(64)}`);
   console.error(`Gecontroleerd:              ${resultaten.length} unieke URL's`);
-  console.error(`OK:                         ${resultaten.length - kapot.length - geblokkeerd.length}`);
+  console.error(`OK:                         ${ok.length}`);
   console.error(`Geblokkeerd (bot-filter):   ${geblokkeerd.length}  — niet fout, wel onverifieerbaar`);
   console.error(`Kapot:                      ${kapot.length}`);
   console.error(`Gemeenten met kapotte link: ${gemeentenKapot}`);
   console.error(`${'='.repeat(64)}`);
+
+  if (nietsGemeten) {
+    console.error(
+      '\n⛔ Geen enkele URL leverde een bevestiging op. Deze run heeft niets\n' +
+      '   gemeten en zegt dus niets over de bronlinks. Draai hem vanaf een\n' +
+      '   machine met normale uitgaande netwerktoegang.'
+    );
+  }
 
   if (kapot.length) {
     console.error('\nDeze moeten vervangen worden:');
@@ -119,14 +135,16 @@ async function main() {
   if (alsJson) {
     console.log(JSON.stringify({
       gecontroleerd: resultaten.length,
+      ok: ok.length,
       kapot: kapot.length,
       geblokkeerd: geblokkeerd.length,
+      nietsGemeten,
       gemeentenMetKapotteLink: gemeentenKapot,
       resultaten
     }, null, 2));
   }
 
-  process.exit(kapot.length > 0 ? 1 : 0);
+  process.exit(kapot.length > 0 || nietsGemeten ? 1 : 0);
 }
 
 main().catch(err => {

@@ -23,7 +23,16 @@ const { GoogleGenAI } = require('@google/genai');
 const pfasNormen = require('./pfas_normen.json');
 const { toDocId } = require('./docId');
 
-const SRU_BASE = 'https://zoek.officielebekendmakingen.nl/sru/Search';
+// KOOP levert deze collectie via het repository-endpoint. Het oude adres
+// (zoek.officielebekendmakingen.nl/sru/Search) geeft sinds enige tijd HTTP 500
+// op élke query, ook op de simpelste — het is uitgefaseerd, niet overbelast.
+//
+// Dat was hier niet aan te zien. Een sweep die geen records ophaalt levert geen
+// foutmelding op maar de mededeling "geen nieuwe bekendmakingen gevonden", en
+// dat is precies hoe een rustige week er ook uitziet. De bron die als enige als
+// juridisch vastgesteld beleid geldt, viel dus stil weg zonder dat iets afging.
+// check-bronnen.js controleert daarom op records in plaats van op status 200.
+const SRU_BASE = 'https://repository.overheid.nl/sru';
 
 // De SRU-connectie heet 'oep'. In de oude code stond hier 'officielepublicaties',
 // maar dat is de waarde van c.product-area BINNEN de query — niet de naam van de
@@ -90,9 +99,22 @@ async function haalPagina(query, startRecord) {
 
   const response = await axios.get(url, {
     timeout: 30000,
-    headers: { 'User-Agent': 'PFASDashboard/1.0 (overheid-monitoring)' }
+    // SRU levert XML. Axios probeert standaard JSON van het antwoord te maken en
+    // geeft dan geen string terug, waarna elke .match() hieronder omvalt. Het
+    // antwoord moet onbewerkt blijven.
+    responseType: 'text',
+    transformResponse: [(d) => d],
+    headers: {
+      'User-Agent': 'PFASDashboard/1.0 (overheid-monitoring)',
+      // Zonder deze regel stuurt axios `Accept: application/json, text/plain,
+      // */*`. De API doet aan contentonderhandeling en geeft dan JSON terug in
+      // plaats van XML — een antwoord van 290.000 tekens waar geen enkele
+      // XML-regex op past. Resultaat: nul records en totaal null, wat er precies
+      // zo uitziet als "er is niets gepubliceerd".
+      'Accept': 'application/xml, text/xml;q=0.9, */*;q=0.8'
+    }
   });
-  const xml = response.data;
+  const xml = String(response.data);
 
   // SRU meldt fouten via <diagnostic>, met HTTP 200. Zonder deze check ziet een
   // kapotte query er precies zo uit als "geen resultaten" — de failure mode die
@@ -103,7 +125,11 @@ async function haalPagina(query, startRecord) {
   }
 
   const records = [];
-  const recordRegex = /<(?:\w+:)?recordData>([\s\S]*?)<\/(?:\w+:)?recordData>/g;
+  // `[^>]*` is nodig: het element komt binnen als `<sru:recordData>` mét
+  // namespace-attributen. Zonder die ruimte matcht de regex niets, blijft de
+  // lijst leeg en meldt de sweep "geen nieuwe bekendmakingen" — terwijl
+  // numberOfRecords gewoon een getal boven nul teruggeeft.
+  const recordRegex = /<(?:\w+:)?recordData[^>]*>([\s\S]*?)<\/(?:\w+:)?recordData>/g;
   let match;
 
   while ((match = recordRegex.exec(xml)) !== null) {
@@ -115,7 +141,12 @@ async function haalPagina(query, startRecord) {
     };
 
     const identifier = extract('identifier');
-    const docUrl = extract('url');
+
+    // KOOP levert de vindplaats als <gzd:itemUrl manifestation="html|xml|pdf">,
+    // niet als <url>. Er staan er meerdere per record; de HTML-versie is degene
+    // die haalDocumentTekst kan lezen.
+    const itemUrls = [...data.matchAll(/<(?:\w+:)?itemUrl[^>]*>([^<]+)<\//gi)].map(m => m[1].trim());
+    const docUrl = itemUrls.find(u => /\.html?$/i.test(u)) || itemUrls[0] || extract('url');
 
     records.push({
       title: extract('title'),
@@ -186,13 +217,21 @@ const LANDELIJK = pfasNormen.landelijk_kader;
 async function haalDocumentTekst(docUrl) {
   try {
     // Haal de plain-text versie op (voeg ?format=text toe of parse HTML)
-    const response = await axios.get(docUrl, { 
+    const response = await axios.get(docUrl, {
       timeout: 15000,
-      headers: { 'User-Agent': 'PFASDashboard/1.0 (overheid-monitoring)' }
+      // Zelfde reden als bij haalPagina: de bekendmaking is HTML, geen JSON —
+      // en ook hier moet de Accept-header dat zeggen, anders vraagt axios
+      // standaard om JSON en onderhandelt de server iets anders terug.
+      responseType: 'text',
+      transformResponse: [(d) => d],
+      headers: {
+        'User-Agent': 'PFASDashboard/1.0 (overheid-monitoring)',
+        'Accept': 'text/html, application/xhtml+xml, application/xml;q=0.9, */*;q=0.8'
+      }
     });
-    
+
     // Strip HTML tags voor pure tekst
-    let text = response.data;
+    let text = String(response.data);
     text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
     text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
     text = text.replace(/<[^>]+>/g, ' ');
@@ -904,5 +943,8 @@ module.exports = {
   zoekBekendmakingen,
   bouwCqlQuery,
   sweepBekendmakingen,
-  herbouwAfwijkingen
+  herbouwAfwijkingen,
+  haalDocumentTekst,
+  haalPagina,
+  SRU_BASE
 };
