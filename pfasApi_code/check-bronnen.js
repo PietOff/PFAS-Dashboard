@@ -104,6 +104,35 @@ async function sruProbe(query, { pogingen = 3, basis = SRU_IN_GEBRUIK, versie = 
 }
 
 /**
+ * Haalt één SRU-antwoord op en beschrijft hoe het is opgebouwd.
+ *
+ * Bedoeld voor het geval de API wél records telt maar de parser er geen uit
+ * haalt. Dan is de vraag welke elementnamen er echt in staan; die staan nergens
+ * in de documentatie zo beschreven en zijn zonder netwerktoegang niet te raden.
+ */
+async function xmlVorm(query) {
+  const url = `${SRU_IN_GEBRUIK}?version=1.2&operation=searchRetrieve&x-connection=oep` +
+    `&startRecord=1&maximumRecords=2&query=${encodeURIComponent(query)}`;
+
+  try {
+    const r = await haal(url, { type: 'text' });
+    const xml = String(r.data);
+
+    // Unieke elementnamen, in volgorde van voorkomen. Genoeg om te zien of het
+    // om recordData/gzd/originalData gaat, zonder de hele XML te dumpen.
+    const namen = [];
+    for (const m of xml.matchAll(/<([A-Za-z_][\w.:-]*)[\s>]/g)) {
+      if (!namen.includes(m[1])) namen.push(m[1]);
+      if (namen.length >= 25) break;
+    }
+
+    return `Antwoord is ${xml.length} tekens; elementen: ${namen.join(', ')}.`;
+  } catch (err) {
+    return `Kon het antwoord niet opnieuw ophalen (${err.code || err.message}).`;
+  }
+}
+
+/**
  * Elke controle geeft { ok, detail } terug. `ok: false` laat het script falen;
  * een controle die zichzelf niet kan uitvoeren geeft dat expliciet aan in
  * `detail` in plaats van stilletjes te slagen.
@@ -209,7 +238,14 @@ const CONTROLES = [
       // Daarom hier de echte productiecode, niet een nagebouwd verzoek.
       const { records } = await zoekBekendmakingen({ vanaf: '2019-01-01', maxRecords: 5 });
       if (!records.length) {
-        return { ok: false, detail: 'de API telt records maar zoekBekendmakingen levert er geen' };
+        // De API telt records maar de parser vindt ze niet: het XML-formaat wijkt
+        // af. Zonder de echte elementnamen is dat giswerk, dus die worden hier
+        // opgehaald en gemeld in plaats van alleen "levert er geen".
+        return {
+          ok: false,
+          detail: 'de API telt records maar zoekBekendmakingen levert er geen. ' +
+            await xmlVorm(stappen[stappen.length - 1].query)
+        };
       }
 
       const bruikbaar = records.filter(r => r.identifier && r.url);
