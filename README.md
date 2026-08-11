@@ -322,16 +322,27 @@ node check-bronnen.js --json > bronnen.json
 | `/api/v1/gemeenten` | de data die het dashboard toont | volledige lijst, elke gemeente met bruikbare normen |
 | IPLO handelingskader | de bronlink onder het landelijk kader | pagina bestaat én noemt PFAS |
 
-> **De eerste run vond meteen iets.** Het SRU-endpoint
-> `zoek.officielebekendmakingen.nl/sru/Search` geeft HTTP 500 op élke query, ook
-> op de simpelste — het is uitgefaseerd, niet overbelast. KOOP bedient dezelfde
-> collectie via `repository.overheid.nl/sru` (6,6 miljoen records), en daar staat
-> `SRU_BASE` nu op.
+> **De eerste run legde de sweep stil bloot.** Er zaten drie fouten achter
+> elkaar, en elk daarvan zag er van buiten uit als "er is niets gepubliceerd":
 >
-> Dit was nergens aan te zien. Een sweep die niets ophaalt meldt geen fout maar
-> "geen nieuwe bekendmakingen gevonden", en zo ziet een rustige week er ook uit.
-> De enige bron die als juridisch vastgesteld beleid mag gelden was dus stilletjes
-> weggevallen. Precies waarom deze controle op records kijkt en niet op HTTP 200.
+> 1. **Het endpoint was uitgefaseerd.** `zoek.officielebekendmakingen.nl/sru/Search`
+>    geeft HTTP 500 op élke query, ook op de simpelste. KOOP bedient dezelfde
+>    collectie via `repository.overheid.nl/sru`.
+> 2. **De verkeerde inhoud werd opgevraagd.** Axios stuurt uit zichzelf
+>    `Accept: application/json, text/plain, */*`. De API doet aan
+>    contentonderhandeling en gaf keurig JSON terug — een geldig antwoord op een
+>    vraag die niemand bedoelde te stellen, waar geen enkele XML-regex op past.
+>    `haalPagina` vraagt nu expliciet om XML, `haalDocumentTekst` om HTML.
+> 3. **De records werden niet uitgelezen.** Het element komt binnen als
+>    `<sru:recordData>` mét namespace-attribuut, en de vindplaats staat in
+>    `<gzd:itemUrl manifestation="html">`, niet in een `<url>`.
+>
+> Geen van drieën leverde ooit een foutmelding op. De sweep meldde "geen nieuwe
+> bekendmakingen gevonden" en alle gemeenten bleven op `landelijk-kader-aanname`
+> staan alsof er niets te vinden was — terwijl er sinds 2019 **992 publicaties**
+> op deze zoekopdracht matchen. Precies waarom deze controle op records kijkt en
+> niet op HTTP 200, en waarom ze de échte productiecode aanroept in plaats van
+> een nagebouwd verzoek: fout 2 en 3 zijn alleen zo te vinden.
 
 Deze bronnen falen allemaal **stil**. PDOK kan van pad veranderen, waarna
 `gemeentelijst.js` ongemerkt terugvalt op de geojson en de dekkingscontrole een
