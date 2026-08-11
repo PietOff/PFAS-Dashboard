@@ -23,7 +23,7 @@
  */
 
 const axios = require('axios');
-const { bouwCqlQuery, zoekBekendmakingen, SRU_BASE } = require('./checkBekendmakingen');
+const { bouwCqlQuery, zoekBekendmakingen, haalDocumentTekst, SRU_BASE } = require('./checkBekendmakingen');
 const { MIN_GEMEENTEN, MAX_GEMEENTEN } = require('./gemeentelijst');
 
 const alsJson = process.argv.includes('--json');
@@ -257,10 +257,23 @@ const CONTROLES = [
         };
       }
 
+      // Een vindbaar record is nog geen leesbaar besluit. De sweep haalt daarna
+      // de tekst op; blijft die leeg, dan wordt er niets geanalyseerd en staat
+      // er alsnog niets in het dashboard.
+      const tekst = await haalDocumentTekst(bruikbaar[0].url);
+      if (!tekst || tekst.length < 200) {
+        return {
+          ok: false,
+          detail: `records zijn vindbaar, maar de tekst van ${bruikbaar[0].identifier} ` +
+            `is niet op te halen (${bruikbaar[0].url})`
+        };
+      }
+
       return {
         ok: true,
         detail: `${laatsteGeslaagd.aantal} records sinds 2019-01-01; ` +
-          `${bruikbaar.length}/${records.length} verwerkbaar (bijv. ${bruikbaar[0].identifier})`
+          `${bruikbaar.length}/${records.length} verwerkbaar; ` +
+          `documenttekst leesbaar (${bruikbaar[0].identifier}, ${tekst.length} tekens)`
       };
     }
   },

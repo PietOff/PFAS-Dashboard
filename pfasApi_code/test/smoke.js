@@ -428,6 +428,35 @@ test('de SRU-bron wijst naar het endpoint dat KOOP nog bedient', () => {
 });
 
 // ------------------------------------------------------------------
+test('een SRU-record met namespaces en attributen wordt uitgelezen', () => {
+  // Het echte antwoord van KOOP: <sru:recordData> mét namespace-attribuut, en
+  // de vindplaats als <gzd:itemUrl manifestation="...">, niet als <url>. De
+  // oude regex eiste `recordData>` zonder attributen en vond dus niets — de
+  // sweep meldde dan "geen nieuwe bekendmakingen" terwijl numberOfRecords
+  // gewoon een getal boven nul teruggaf.
+  const cb = fs.readFileSync(path.join(wortel, 'checkBekendmakingen.js'), 'utf8');
+
+  const recordRegex = cb.match(/const recordRegex = (\/.*\/g);/);
+  assert.ok(recordRegex, 'recordRegex niet gevonden in checkBekendmakingen.js');
+
+  const xml =
+    '<sru:recordData xmlns:gzd="http://standaarden.overheid.nl/sru">' +
+    '<gzd:gzd><gzd:originalData><dcterms:identifier>gmb-2024-1</dcterms:identifier>' +
+    '<gzd:itemUrl manifestation="xml">https://x/a.xml</gzd:itemUrl>' +
+    '<gzd:itemUrl manifestation="html">https://x/a.html</gzd:itemUrl>' +
+    '</gzd:originalData></gzd:gzd></sru:recordData>';
+
+  const re = new RegExp(recordRegex[1].slice(1, -2), 'g');
+  const treffer = re.exec(xml);
+  assert.ok(treffer, 'recordData met een namespace-attribuut wordt niet herkend');
+
+  // En de HTML-versie moet gekozen worden: die kan haalDocumentTekst lezen.
+  const urls = [...treffer[1].matchAll(/<(?:\w+:)?itemUrl[^>]*>([^<]+)<\//gi)].map(m => m[1]);
+  assert.strictEqual(urls.find(u => /\.html?$/i.test(u)), 'https://x/a.html');
+  assert.ok(/itemUrl/.test(cb), 'checkBekendmakingen.js leest itemUrl niet uit');
+});
+
+// ------------------------------------------------------------------
 test('de linkcheck slaagt niet als hij niets heeft kunnen meten', () => {
   // Draait de check in een omgeving zonder uitgaand netwerk, dan is elke URL
   // "geblokkeerd", is het aantal kapotte links nul en eindigt hij groen — een

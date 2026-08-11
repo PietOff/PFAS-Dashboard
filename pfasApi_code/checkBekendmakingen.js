@@ -117,7 +117,11 @@ async function haalPagina(query, startRecord) {
   }
 
   const records = [];
-  const recordRegex = /<(?:\w+:)?recordData>([\s\S]*?)<\/(?:\w+:)?recordData>/g;
+  // `[^>]*` is nodig: het element komt binnen als `<sru:recordData>` mét
+  // namespace-attributen. Zonder die ruimte matcht de regex niets, blijft de
+  // lijst leeg en meldt de sweep "geen nieuwe bekendmakingen" — terwijl
+  // numberOfRecords gewoon een getal boven nul teruggeeft.
+  const recordRegex = /<(?:\w+:)?recordData[^>]*>([\s\S]*?)<\/(?:\w+:)?recordData>/g;
   let match;
 
   while ((match = recordRegex.exec(xml)) !== null) {
@@ -129,7 +133,12 @@ async function haalPagina(query, startRecord) {
     };
 
     const identifier = extract('identifier');
-    const docUrl = extract('url');
+
+    // KOOP levert de vindplaats als <gzd:itemUrl manifestation="html|xml|pdf">,
+    // niet als <url>. Er staan er meerdere per record; de HTML-versie is degene
+    // die haalDocumentTekst kan lezen.
+    const itemUrls = [...data.matchAll(/<(?:\w+:)?itemUrl[^>]*>([^<]+)<\//gi)].map(m => m[1].trim());
+    const docUrl = itemUrls.find(u => /\.html?$/i.test(u)) || itemUrls[0] || extract('url');
 
     records.push({
       title: extract('title'),
@@ -922,5 +931,6 @@ module.exports = {
   bouwCqlQuery,
   sweepBekendmakingen,
   herbouwAfwijkingen,
+  haalDocumentTekst,
   SRU_BASE
 };
