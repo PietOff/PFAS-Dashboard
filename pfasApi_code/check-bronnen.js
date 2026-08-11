@@ -23,7 +23,7 @@
  */
 
 const axios = require('axios');
-const { bouwCqlQuery, zoekBekendmakingen, haalDocumentTekst, SRU_BASE } = require('./checkBekendmakingen');
+const { bouwCqlQuery, zoekBekendmakingen, haalDocumentTekst, haalPagina, SRU_BASE } = require('./checkBekendmakingen');
 const { MIN_GEMEENTEN, MAX_GEMEENTEN } = require('./gemeentelijst');
 
 const alsJson = process.argv.includes('--json');
@@ -144,6 +144,35 @@ async function xmlVorm(query) {
     } catch (err) {
       delen.push(`max=${max}: niet op te halen (${err.code || err.message})`);
     }
+  }
+
+  // Dezelfde vraag nog één keer, maar nu met exact de axios-opties van
+  // haalPagina. Levert dit een ander resultaat dan hierboven, dan zit het
+  // verschil in de aanroep en niet in de XML.
+  try {
+    const url = `${SRU_IN_GEBRUIK}?version=1.2&operation=searchRetrieve&x-connection=oep` +
+      `&startRecord=1&maximumRecords=100&query=${encodeURIComponent(query)}`;
+    const r = await axios.get(url, {
+      timeout: 30000,
+      responseType: 'text',
+      transformResponse: [(d) => d],
+      headers: { 'User-Agent': 'PFASDashboard/1.0 (overheid-monitoring)' }
+    });
+    const xml = String(r.data);
+    const paren = (xml.match(/<(?:\w+:)?recordData[^>]*>[\s\S]*?<\/(?:\w+:)?recordData>/g) || []).length;
+    delen.push(`productie-opties: type ${typeof r.data}, ${xml.length} tekens, ${paren} paren`);
+  } catch (err) {
+    delen.push(`productie-opties: fout (${err.code || err.message})`);
+  }
+
+  // En tot slot de productiefunctie zelf. Gooit hij een fout, dan is dat een
+  // ander verhaal dan "nul records"; dat onderscheid is hier niet af te leiden
+  // uit de uitkomst van zoekBekendmakingen.
+  try {
+    const p = await haalPagina(query, 1);
+    delen.push(`haalPagina zelf: ${p.records.length} records, totaal ${p.totaal}`);
+  } catch (err) {
+    delen.push(`haalPagina zelf: gooit "${err.message}"`);
   }
 
   return delen.join(' || ');

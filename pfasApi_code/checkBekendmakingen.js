@@ -932,5 +932,6 @@ module.exports = {
   sweepBekendmakingen,
   herbouwAfwijkingen,
   haalDocumentTekst,
+  haalPagina,
   SRU_BASE
 };
