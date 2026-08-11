@@ -111,25 +111,36 @@ async function sruProbe(query, { pogingen = 3, basis = SRU_IN_GEBRUIK, versie = 
  * in de documentatie zo beschreven en zijn zonder netwerktoegang niet te raden.
  */
 async function xmlVorm(query) {
-  const url = `${SRU_IN_GEBRUIK}?version=1.2&operation=searchRetrieve&x-connection=oep` +
-    `&startRecord=1&maximumRecords=2&query=${encodeURIComponent(query)}`;
+  // Twee keer hetzelfde verzoek, alleen met een andere paginagrootte. De
+  // productiecode vraagt er 100 op; blijkt het antwoord daarop anders te zijn
+  // dan op een kleine pagina, dan zit het verschil daar en niet in de parser.
+  const delen = [];
 
-  try {
-    const r = await haal(url, { type: 'text' });
-    const xml = String(r.data);
+  for (const max of [2, 100]) {
+    const url = `${SRU_IN_GEBRUIK}?version=1.2&operation=searchRetrieve&x-connection=oep` +
+      `&startRecord=1&maximumRecords=${max}&query=${encodeURIComponent(query)}`;
 
-    // Unieke elementnamen, in volgorde van voorkomen. Genoeg om te zien of het
-    // om recordData/gzd/originalData gaat, zonder de hele XML te dumpen.
-    const namen = [];
-    for (const m of xml.matchAll(/<([A-Za-z_][\w.:-]*)[\s>]/g)) {
-      if (!namen.includes(m[1])) namen.push(m[1]);
-      if (namen.length >= 25) break;
+    try {
+      const r = await haal(url, { type: 'text' });
+      const xml = String(r.data);
+      const aantalRecordData = (xml.match(/<(?:\w+:)?recordData[^>]*>/g) || []).length;
+
+      const namen = [];
+      for (const m of xml.matchAll(/<([A-Za-z_][\w.:-]*)[\s>]/g)) {
+        if (!namen.includes(m[1])) namen.push(m[1]);
+        if (namen.length >= 12) break;
+      }
+
+      delen.push(
+        `max=${max}: HTTP ${r.status}, ${xml.length} tekens, ${aantalRecordData}x recordData, ` +
+        `elementen ${namen.join('/')}, begin "${xml.slice(0, 160).replace(/\s+/g, ' ')}"`
+      );
+    } catch (err) {
+      delen.push(`max=${max}: niet op te halen (${err.code || err.message})`);
     }
-
-    return `Antwoord is ${xml.length} tekens; elementen: ${namen.join(', ')}.`;
-  } catch (err) {
-    return `Kon het antwoord niet opnieuw ophalen (${err.code || err.message}).`;
   }
+
+  return delen.join(' || ');
 }
 
 /**
