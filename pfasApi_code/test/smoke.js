@@ -420,6 +420,17 @@ test('de SRU-bron wijst naar het endpoint dat KOOP nog bedient', () => {
   assert.strictEqual(rauw.length, 2,
     'haalPagina en haalDocumentTekst moeten allebei het rauwe antwoord houden');
 
+  // En allebei moeten ze zelf om XML/HTML vragen. Zonder Accept-header stuurt
+  // axios `application/json` vooraan, doet de API aan contentonderhandeling en
+  // komt er JSON terug waar geen enkele XML-regex op past — nul records, en dat
+  // is niet te onderscheiden van "er is niets gepubliceerd".
+  const accepts = cb.match(/'Accept': '[^']+'/g) || [];
+  assert.strictEqual(accepts.length, 2,
+    'haalPagina en haalDocumentTekst moeten allebei een expliciete Accept-header sturen');
+  assert.ok(accepts.some(a => /xml/.test(a)), 'de SRU-aanroep vraagt niet om XML');
+  assert.ok(!accepts.some(a => /^'Accept': 'application\/json/.test(a)),
+    'geen van beide mag JSON vooraan zetten');
+
   // check-bronnen.js moet het endpoint uit de productiecode overnemen, anders
   // controleert het iets anders dan de sweep gebruikt.
   const bron = fs.readFileSync(path.join(wortel, 'check-bronnen.js'), 'utf8');

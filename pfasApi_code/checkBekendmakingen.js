@@ -104,7 +104,15 @@ async function haalPagina(query, startRecord) {
     // antwoord moet onbewerkt blijven.
     responseType: 'text',
     transformResponse: [(d) => d],
-    headers: { 'User-Agent': 'PFASDashboard/1.0 (overheid-monitoring)' }
+    headers: {
+      'User-Agent': 'PFASDashboard/1.0 (overheid-monitoring)',
+      // Zonder deze regel stuurt axios `Accept: application/json, text/plain,
+      // */*`. De API doet aan contentonderhandeling en geeft dan JSON terug in
+      // plaats van XML — een antwoord van 290.000 tekens waar geen enkele
+      // XML-regex op past. Resultaat: nul records en totaal null, wat er precies
+      // zo uitziet als "er is niets gepubliceerd".
+      'Accept': 'application/xml, text/xml;q=0.9, */*;q=0.8'
+    }
   });
   const xml = String(response.data);
 
@@ -211,10 +219,15 @@ async function haalDocumentTekst(docUrl) {
     // Haal de plain-text versie op (voeg ?format=text toe of parse HTML)
     const response = await axios.get(docUrl, {
       timeout: 15000,
-      // Zelfde reden als bij haalPagina: de bekendmaking is HTML, geen JSON.
+      // Zelfde reden als bij haalPagina: de bekendmaking is HTML, geen JSON —
+      // en ook hier moet de Accept-header dat zeggen, anders vraagt axios
+      // standaard om JSON en onderhandelt de server iets anders terug.
       responseType: 'text',
       transformResponse: [(d) => d],
-      headers: { 'User-Agent': 'PFASDashboard/1.0 (overheid-monitoring)' }
+      headers: {
+        'User-Agent': 'PFASDashboard/1.0 (overheid-monitoring)',
+        'Accept': 'text/html, application/xhtml+xml, application/xml;q=0.9, */*;q=0.8'
+      }
     });
 
     // Strip HTML tags voor pure tekst
