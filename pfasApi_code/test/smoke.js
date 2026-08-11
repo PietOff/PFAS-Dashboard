@@ -412,6 +412,14 @@ test('de SRU-bron wijst naar het endpoint dat KOOP nog bedient', () => {
     'SRU_BASE staat op het uitgefaseerde endpoint dat op elke query 500 geeft');
   assert.ok(/^https:\/\//.test(SRU_BASE), 'SRU_BASE moet een https-endpoint zijn');
 
+  // SRU levert XML en de bekendmakingen leveren HTML. Laat axios die antwoorden
+  // ongemoeid: standaard probeert hij er JSON van te maken en dan is het geen
+  // string meer, waarna elke .match() erop omvalt.
+  const cb = fs.readFileSync(path.join(wortel, 'checkBekendmakingen.js'), 'utf8');
+  const rauw = cb.match(/transformResponse: \[\(d\) => d\]/g) || [];
+  assert.strictEqual(rauw.length, 2,
+    'haalPagina en haalDocumentTekst moeten allebei het rauwe antwoord houden');
+
   // check-bronnen.js moet het endpoint uit de productiecode overnemen, anders
   // controleert het iets anders dan de sweep gebruikt.
   const bron = fs.readFileSync(path.join(wortel, 'check-bronnen.js'), 'utf8');

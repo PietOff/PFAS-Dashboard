@@ -99,9 +99,14 @@ async function haalPagina(query, startRecord) {
 
   const response = await axios.get(url, {
     timeout: 30000,
+    // SRU levert XML. Axios probeert standaard JSON van het antwoord te maken en
+    // geeft dan geen string terug, waarna elke .match() hieronder omvalt. Het
+    // antwoord moet onbewerkt blijven.
+    responseType: 'text',
+    transformResponse: [(d) => d],
     headers: { 'User-Agent': 'PFASDashboard/1.0 (overheid-monitoring)' }
   });
-  const xml = response.data;
+  const xml = String(response.data);
 
   // SRU meldt fouten via <diagnostic>, met HTTP 200. Zonder deze check ziet een
   // kapotte query er precies zo uit als "geen resultaten" — de failure mode die
@@ -195,13 +200,16 @@ const LANDELIJK = pfasNormen.landelijk_kader;
 async function haalDocumentTekst(docUrl) {
   try {
     // Haal de plain-text versie op (voeg ?format=text toe of parse HTML)
-    const response = await axios.get(docUrl, { 
+    const response = await axios.get(docUrl, {
       timeout: 15000,
+      // Zelfde reden als bij haalPagina: de bekendmaking is HTML, geen JSON.
+      responseType: 'text',
+      transformResponse: [(d) => d],
       headers: { 'User-Agent': 'PFASDashboard/1.0 (overheid-monitoring)' }
     });
-    
+
     // Strip HTML tags voor pure tekst
-    let text = response.data;
+    let text = String(response.data);
     text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
     text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
     text = text.replace(/<[^>]+>/g, ' ');
