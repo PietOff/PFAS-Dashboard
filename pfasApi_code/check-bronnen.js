@@ -123,17 +123,23 @@ async function xmlVorm(query) {
     try {
       const r = await haal(url, { type: 'text' });
       const xml = String(r.data);
-      const aantalRecordData = (xml.match(/<(?:\w+:)?recordData[^>]*>/g) || []).length;
+      // Open- én sluittag apart tellen. Zijn het er evenveel open maar matcht
+      // het paar niet, dan wijkt de sluittag af en is dát de reden dat de
+      // parser niets vindt.
+      const open = (xml.match(/<(?:\w+:)?recordData[^>]*>/g) || []).length;
+      const sluit = (xml.match(/<\/(?:\w+:)?recordData>/g) || []).length;
+      const paren = (xml.match(/<(?:\w+:)?recordData[^>]*>[\s\S]*?<\/(?:\w+:)?recordData>/g) || []).length;
 
-      const namen = [];
-      for (const m of xml.matchAll(/<([A-Za-z_][\w.:-]*)[\s>]/g)) {
-        if (!namen.includes(m[1])) namen.push(m[1]);
-        if (namen.length >= 12) break;
-      }
+      // Het stuk rond het eerste einde van een record: daar staat de sluittag
+      // zoals hij er echt uitziet.
+      const eind = xml.search(/<\/(?:\w+:)?recordData/);
+      const staart = eind === -1
+        ? xml.slice(-120).replace(/\s+/g, ' ')
+        : xml.slice(Math.max(0, eind - 60), eind + 60).replace(/\s+/g, ' ');
 
       delen.push(
-        `max=${max}: HTTP ${r.status}, ${xml.length} tekens, ${aantalRecordData}x recordData, ` +
-        `elementen ${namen.join('/')}, begin "${xml.slice(0, 160).replace(/\s+/g, ' ')}"`
+        `max=${max}: HTTP ${r.status}, ${xml.length} tekens, ` +
+        `recordData open=${open} sluit=${sluit} paren=${paren}, rond de sluittag "${staart}"`
       );
     } catch (err) {
       delen.push(`max=${max}: niet op te halen (${err.code || err.message})`);
