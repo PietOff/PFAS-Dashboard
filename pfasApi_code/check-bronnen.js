@@ -31,6 +31,19 @@ const alsJson = process.argv.includes('--json');
 const SITE = 'https://pfas-dashboard-nl-a808d.web.app';
 const UA = 'PFASDashboard/1.0 (bronbewaking)';
 
+// Het endpoint dat checkBekendmakingen.js gebruikt.
+const SRU_IN_GEBRUIK = 'https://zoek.officielebekendmakingen.nl/sru/Search';
+
+// KOOP publiceert dezelfde collectie ook via het repository-endpoint. Valt het
+// endpoint in gebruik uit, dan wordt dit alternatief geprobeerd — niet om
+// stilletjes om te schakelen, maar om in het rapport te kunnen zeggen of de
+// storing bij KOOP zit of alleen bij dit ene endpoint. Dat verschil bepaalt of
+// je moet wachten of de configuratie moet aanpassen.
+const SRU_ALTERNATIEVEN = [
+  { naam: 'repository.overheid.nl (v1.2)', basis: 'https://repository.overheid.nl/sru', versie: '1.2' },
+  { naam: 'repository.overheid.nl (v2.0)', basis: 'https://repository.overheid.nl/sru', versie: '2.0' }
+];
+
 async function haal(url, { type = 'json', timeout = 30000 } = {}) {
   return axios.get(url, {
     timeout,
@@ -50,9 +63,8 @@ async function haal(url, { type = 'json', timeout = 30000 } = {}) {
  * anders zou deze controle wekelijks vals alarm slaan en binnen een maand
  * genegeerd worden.
  */
-async function sruProbe(query, { pogingen = 3 } = {}) {
-  const url = 'https://zoek.officielebekendmakingen.nl/sru/Search' +
-    '?version=1.2&operation=searchRetrieve&x-connection=oep' +
+async function sruProbe(query, { pogingen = 3, basis = SRU_IN_GEBRUIK, versie = '1.2' } = {}) {
+  const url = `${basis}?version=${versie}&operation=searchRetrieve&x-connection=oep` +
     `&startRecord=1&maximumRecords=1&query=${encodeURIComponent(query)}`;
 
   let laatste = 'onbekend';
@@ -158,8 +170,25 @@ const CONTROLES = [
         if (!uit.ok) {
           const tot_nu = laatsteGeslaagd
             ? `Tot en met "${laatsteGeslaagd.naam}" werkte het wel (${laatsteGeslaagd.aantal} records).`
-            : 'Ook de simpelste query faalt, dus de API zelf is de oorzaak.';
-          return { ok: false, detail: `faalt bij "${stap.naam}": ${uit.fout}. ${tot_nu}` };
+            : 'Ook de simpelste query faalt, dus de query is niet de oorzaak.';
+
+          // Ligt het aan dit endpoint of aan KOOP? Datzelfde verzoek langs de
+          // alternatieven leggen beantwoordt dat in één run.
+          let vergelijking = '';
+          if (!laatsteGeslaagd) {
+            const uitkomsten = [];
+            for (const alt of SRU_ALTERNATIEVEN) {
+              const a = await sruProbe(stap.query, { pogingen: 1, basis: alt.basis, versie: alt.versie });
+              uitkomsten.push(`${alt.naam}: ${a.ok ? `werkt (${a.aantal} records)` : a.fout}`);
+            }
+            const werkt = uitkomsten.some(u => u.includes('werkt'));
+            vergelijking = ` Alternatieven — ${uitkomsten.join('; ')}.` +
+              (werkt
+                ? ' Een alternatief antwoordt wél, dus dit is geen KOOP-brede storing maar een endpoint dat verhuisd of uitgefaseerd is.'
+                : ' Geen enkel endpoint antwoordt; dit lijkt een storing bij KOOP.');
+          }
+
+          return { ok: false, detail: `faalt bij "${stap.naam}": ${uit.fout}. ${tot_nu}${vergelijking}` };
         }
 
         if (uit.aantal === 0) {
