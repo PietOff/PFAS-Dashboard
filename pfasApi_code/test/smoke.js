@@ -402,6 +402,24 @@ test('gemeenten staan bij de omgevingsdienst die hun beleid maakt', () => {
 });
 
 // ------------------------------------------------------------------
+test('de SRU-bron wijst naar het endpoint dat KOOP nog bedient', () => {
+  // zoek.officielebekendmakingen.nl/sru/Search geeft HTTP 500 op élke query,
+  // ook de simpelste. Dat was hier niet aan te zien: een sweep zonder records
+  // meldt "geen nieuwe bekendmakingen", precies zoals een rustige week. De
+  // enige bron die als vastgesteld beleid geldt viel zo stil weg.
+  const { SRU_BASE } = require('../checkBekendmakingen');
+  assert.ok(!/zoek\.officielebekendmakingen\.nl\/sru/.test(SRU_BASE),
+    'SRU_BASE staat op het uitgefaseerde endpoint dat op elke query 500 geeft');
+  assert.ok(/^https:\/\//.test(SRU_BASE), 'SRU_BASE moet een https-endpoint zijn');
+
+  // check-bronnen.js moet het endpoint uit de productiecode overnemen, anders
+  // controleert het iets anders dan de sweep gebruikt.
+  const bron = fs.readFileSync(path.join(wortel, 'check-bronnen.js'), 'utf8');
+  assert.ok(/SRU_IN_GEBRUIK = SRU_BASE/.test(bron),
+    'check-bronnen.js hardcodeert het SRU-endpoint in plaats van het over te nemen');
+});
+
+// ------------------------------------------------------------------
 test('de linkcheck slaagt niet als hij niets heeft kunnen meten', () => {
   // Draait de check in een omgeving zonder uitgaand netwerk, dan is elke URL
   // "geblokkeerd", is het aantal kapotte links nul en eindigt hij groen — een

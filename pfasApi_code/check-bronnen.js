@@ -23,7 +23,7 @@
  */
 
 const axios = require('axios');
-const { bouwCqlQuery } = require('./checkBekendmakingen');
+const { bouwCqlQuery, zoekBekendmakingen, SRU_BASE } = require('./checkBekendmakingen');
 const { MIN_GEMEENTEN, MAX_GEMEENTEN } = require('./gemeentelijst');
 
 const alsJson = process.argv.includes('--json');
@@ -31,17 +31,18 @@ const alsJson = process.argv.includes('--json');
 const SITE = 'https://pfas-dashboard-nl-a808d.web.app';
 const UA = 'PFASDashboard/1.0 (bronbewaking)';
 
-// Het endpoint dat checkBekendmakingen.js gebruikt.
-const SRU_IN_GEBRUIK = 'https://zoek.officielebekendmakingen.nl/sru/Search';
+// Niet hier hardcoderen: het endpoint komt uit de productiecode, zodat deze
+// controle altijd meet wat de sweep echt gebruikt.
+const SRU_IN_GEBRUIK = SRU_BASE;
 
-// KOOP publiceert dezelfde collectie ook via het repository-endpoint. Valt het
-// endpoint in gebruik uit, dan wordt dit alternatief geprobeerd — niet om
-// stilletjes om te schakelen, maar om in het rapport te kunnen zeggen of de
-// storing bij KOOP zit of alleen bij dit ene endpoint. Dat verschil bepaalt of
-// je moet wachten of de configuratie moet aanpassen.
-const SRU_ALTERNATIEVEN = [
+// De KOOP-endpoints die deze collectie leveren. Valt het endpoint in gebruik
+// uit, dan gaat hetzelfde verzoek langs de andere — niet om stilletjes om te
+// schakelen, maar om te kunnen zeggen of de storing bij KOOP zit of alleen bij
+// dit ene adres. Dat verschil bepaalt of je moet wachten of moet ingrijpen.
+const SRU_BEKEND = [
   { naam: 'repository.overheid.nl (v1.2)', basis: 'https://repository.overheid.nl/sru', versie: '1.2' },
-  { naam: 'repository.overheid.nl (v2.0)', basis: 'https://repository.overheid.nl/sru', versie: '2.0' }
+  { naam: 'repository.overheid.nl (v2.0)', basis: 'https://repository.overheid.nl/sru', versie: '2.0' },
+  { naam: 'zoek.officielebekendmakingen.nl', basis: 'https://zoek.officielebekendmakingen.nl/sru/Search', versie: '1.2' }
 ];
 
 async function haal(url, { type = 'json', timeout = 30000 } = {}) {
@@ -177,7 +178,7 @@ const CONTROLES = [
           let vergelijking = '';
           if (!laatsteGeslaagd) {
             const uitkomsten = [];
-            for (const alt of SRU_ALTERNATIEVEN) {
+            for (const alt of SRU_BEKEND.filter(a => a.basis !== SRU_IN_GEBRUIK)) {
               const a = await sruProbe(stap.query, { pogingen: 1, basis: alt.basis, versie: alt.versie });
               uitkomsten.push(`${alt.naam}: ${a.ok ? `werkt (${a.aantal} records)` : a.fout}`);
             }
@@ -202,7 +203,29 @@ const CONTROLES = [
         laatsteGeslaagd = { naam: stap.naam, aantal: uit.aantal };
       }
 
-      return { ok: true, detail: `${laatsteGeslaagd.aantal} records sinds 2019-01-01` };
+      // Een record tellen is niet hetzelfde als een record kunnen gebruiken.
+      // De sweep leest identifier en url uit de XML; verandert dat formaat, dan
+      // blijft numberOfRecords keurig kloppen terwijl er niets verwerkt wordt.
+      // Daarom hier de echte productiecode, niet een nagebouwd verzoek.
+      const { records } = await zoekBekendmakingen({ vanaf: '2019-01-01', maxRecords: 5 });
+      if (!records.length) {
+        return { ok: false, detail: 'de API telt records maar zoekBekendmakingen levert er geen' };
+      }
+
+      const bruikbaar = records.filter(r => r.identifier && r.url);
+      if (!bruikbaar.length) {
+        return {
+          ok: false,
+          detail: `${records.length} records opgehaald, maar geen enkele met identifier én url — ` +
+            'het XML-formaat wijkt af van wat haalPagina verwacht'
+        };
+      }
+
+      return {
+        ok: true,
+        detail: `${laatsteGeslaagd.aantal} records sinds 2019-01-01; ` +
+          `${bruikbaar.length}/${records.length} verwerkbaar (bijv. ${bruikbaar[0].identifier})`
+      };
     }
   },
 

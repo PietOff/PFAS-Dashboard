@@ -23,7 +23,16 @@ const { GoogleGenAI } = require('@google/genai');
 const pfasNormen = require('./pfas_normen.json');
 const { toDocId } = require('./docId');
 
-const SRU_BASE = 'https://zoek.officielebekendmakingen.nl/sru/Search';
+// KOOP levert deze collectie via het repository-endpoint. Het oude adres
+// (zoek.officielebekendmakingen.nl/sru/Search) geeft sinds enige tijd HTTP 500
+// op élke query, ook op de simpelste — het is uitgefaseerd, niet overbelast.
+//
+// Dat was hier niet aan te zien. Een sweep die geen records ophaalt levert geen
+// foutmelding op maar de mededeling "geen nieuwe bekendmakingen gevonden", en
+// dat is precies hoe een rustige week er ook uitziet. De bron die als enige als
+// juridisch vastgesteld beleid geldt, viel dus stil weg zonder dat iets afging.
+// check-bronnen.js controleert daarom op records in plaats van op status 200.
+const SRU_BASE = 'https://repository.overheid.nl/sru';
 
 // De SRU-connectie heet 'oep'. In de oude code stond hier 'officielepublicaties',
 // maar dat is de waarde van c.product-area BINNEN de query — niet de naam van de
@@ -904,5 +913,6 @@ module.exports = {
   zoekBekendmakingen,
   bouwCqlQuery,
   sweepBekendmakingen,
-  herbouwAfwijkingen
+  herbouwAfwijkingen,
+  SRU_BASE
 };

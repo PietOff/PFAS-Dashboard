@@ -317,10 +317,21 @@ node check-bronnen.js --json > bronnen.json
 | --- | --- | --- |
 | PDOK Bestuurlijke Gebieden | canonieke gemeentelijst | plausibel aantal gemeenten, niet alleen HTTP 200 |
 | PDOK Locatieserver | het zoekveld in de frontend | levert treffers voor een bestaande plaatsnaam |
-| SRU officielebekendmakingen | enige bron die als vaststaand beleid geldt | `numberOfRecords` > 0 over de hele historie |
+| SRU officielebekendmakingen | enige bron die als vaststaand beleid geldt | `numberOfRecords` > 0 én records die écht te verwerken zijn |
 | `gemeenten.geojson` | kaartlaag en terugval voor de gemeentelijst | geldige JSON met een plausibel aantal features |
 | `/api/v1/gemeenten` | de data die het dashboard toont | volledige lijst, elke gemeente met bruikbare normen |
 | IPLO handelingskader | de bronlink onder het landelijk kader | pagina bestaat én noemt PFAS |
+
+> **De eerste run vond meteen iets.** Het SRU-endpoint
+> `zoek.officielebekendmakingen.nl/sru/Search` geeft HTTP 500 op élke query, ook
+> op de simpelste — het is uitgefaseerd, niet overbelast. KOOP bedient dezelfde
+> collectie via `repository.overheid.nl/sru` (6,6 miljoen records), en daar staat
+> `SRU_BASE` nu op.
+>
+> Dit was nergens aan te zien. Een sweep die niets ophaalt meldt geen fout maar
+> "geen nieuwe bekendmakingen gevonden", en zo ziet een rustige week er ook uit.
+> De enige bron die als juridisch vastgesteld beleid mag gelden was dus stilletjes
+> weggevallen. Precies waarom deze controle op records kijkt en niet op HTTP 200.
 
 Deze bronnen falen allemaal **stil**. PDOK kan van pad veranderen, waarna
 `gemeentelijst.js` ongemerkt terugvalt op de geojson en de dekkingscontrole een
