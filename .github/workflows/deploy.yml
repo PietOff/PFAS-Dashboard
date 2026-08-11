@@ -32,6 +32,10 @@ on:
         description: Typ DEPLOY om te bevestigen
         required: true
         default: ''
+      overslaan:
+        description: 'Functies overslaan (komma-gescheiden), bijv. healthCheck'
+        required: false
+        default: ''
 
 env:
   PROJECT_ID: pfas-dashboard-nl-a808d
@@ -97,7 +101,19 @@ jobs:
             exit 1
           fi
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
-          node -e "require('$RUNNER_TEMP/sa.json')" || { echo '::error::Secret is geen geldige JSON.'; exit 1; }
+          # Toon welk account er gebruikt wordt. Het e-mailadres is niet geheim,
+          # en zonder deze regel is niet te zien dat de secret nog de sleutel van
+          # een ander serviceaccount bevat dan je denkt — precies de reden dat een
+          # deploy kan blijven falen op ontbrekende rechten terwijl je die rechten
+          # net aan een ánder account hebt gegeven.
+          node -e "
+            const sa = require('$RUNNER_TEMP/sa.json');
+            console.log('Serviceaccount:', sa.client_email);
+            console.log('Project in sleutel:', sa.project_id);
+            if (String(sa.client_email).includes('@appspot.gserviceaccount.com')) {
+              console.log('::warning::Dit is het App Engine-standaardaccount. Dat heeft doorgaans alleen Editor, en Editor mist cloudfunctions.functions.setIamPolicy — nodig voor een NIEUWE HTTPS-functie.');
+            }
+          " || { echo '::error::Secret is geen geldige JSON.'; exit 1; }
 
       # Lijst opbouwen uit de daadwerkelijke exports, zodat er niets buiten deze
       # repository geraakt wordt.
@@ -109,9 +125,14 @@ jobs:
           GCLOUD_PROJECT: ${{ env.PROJECT_ID }}
           FIREBASE_CONFIG: '{"projectId":"pfas-dashboard-nl-a808d"}'
         run: |
-          LIJST=$(node -e "
-            const namen = Object.keys(require('./index.js'));
-            if (!namen.length) throw new Error('geen exports gevonden');
+          # Een NIEUWE HTTPS-functie vereist cloudfunctions.functions.setIamPolicy.
+          # Ontbreekt dat recht nog, dan kun je hem hier tijdelijk overslaan en de
+          # rest wel bijwerken.
+          LIJST=$(OVERSLAAN="${{ inputs.overslaan }}" node -e "
+            const skip = new Set((process.env.OVERSLAAN || '').split(',').map(s => s.trim()).filter(Boolean));
+            const namen = Object.keys(require('./index.js')).filter(n => !skip.has(n));
+            if (!namen.length) throw new Error('geen exports over om te deployen');
+            if (skip.size) console.error('Overgeslagen: ' + [...skip].join(', '));
             console.log(namen.map(n => 'functions:' + n).join(','));
           ")
           echo "lijst=$LIJST" >> "$GITHUB_OUTPUT"
