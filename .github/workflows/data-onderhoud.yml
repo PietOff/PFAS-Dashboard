@@ -28,6 +28,10 @@ on:
         description: 'Alleen bij sweep — begindatum (JJJJ-MM-DD), leeg = vanaf het watermerk'
         required: false
         default: ''
+      max:
+        description: 'Alleen bij sweep — documenten per run. Hoger dan ~50 loopt tegen de 9-minuten functietimeout aan.'
+        required: false
+        default: '40'
       bevestig:
         description: 'Alleen bij dubbelen-echt — typ VERWIJDER om te bevestigen'
         required: false
@@ -58,7 +62,11 @@ jobs:
             dubbelen-echt)  URL="$BASIS/mergeDuplicateDocs?apply=true" ;;
             herbouw)        URL="$BASIS/herbouwAfwijkingenNow" ;;
             sweep)
-              URL="$BASIS/sweepBekendmakingenNow?max=200"
+              # Elk nieuw document kost een fetch, een AI-call en een pauze voor
+              # de rate limit: zo'n 5 a 10 seconden. De functie stopt na 9 minuten
+              # (het maximum voor een v1-function), dus meer dan ~50 per run leidt
+              # tot een timeout voordat er antwoord komt.
+              URL="$BASIS/sweepBekendmakingenNow?max=${{ inputs.max }}"
               if [ -n "${{ inputs.vanaf }}" ]; then
                 URL="$URL&vanaf=${{ inputs.vanaf }}"
               fi
@@ -95,4 +103,19 @@ jobs:
             if (d.modus)       console.log('modus:', d.modus, '| dubbelen:', d.gemeentenMetDubbelen, '| te verwijderen:', d.documentenTeVerwijderen);
           " || true
 
-          [ "$CODE" = "200" ] || { echo "::error::De functie gaf HTTP $CODE"; exit 1; }
+          # 408/504 = de functie draaide nog toen de 9 minuten om waren. Verwerkte
+          # documenten zijn per stuk opgeslagen, dus dit is geen verloren werk maar
+          # een halve run. Opnieuw starten pakt de draad op.
+          case "$CODE" in
+            200) ;;
+            408|504)
+              echo "::warning::De functie liep tegen de timeout van 9 minuten. Wat verwerkt was is bewaard; start dezelfde actie opnieuw, eventueel met een lagere waarde bij 'max'."
+              {
+                echo ""
+                echo "> **Timeout, geen fout.** De functie draaide nog toen de 9 minuten om waren."
+                echo "> Verwerkte documenten zijn opgeslagen. Start dezelfde actie opnieuw"
+                echo "> tot \`verwerkt: 0\` verschijnt; verlaag zo nodig \`max\`."
+              } >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            *) echo "::error::De functie gaf HTTP $CODE"; exit 1 ;;
+          esac
