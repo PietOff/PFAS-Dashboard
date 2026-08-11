@@ -91,6 +91,7 @@ jobs:
             md += tabel('Kapot', kapot) + tabel('Geblokkeerd', geblokkeerd);
 
             // Kernbronnen: PDOK, SRU, de eigen hosting en de API.
+            let zonderRapport = false;
             try {
               const b = require('/tmp/kernbronnen.json');
               md += '\n## Kernbronnen\n\n| Bron | Status | Detail |\n|---|---|---|\n';
@@ -98,11 +99,16 @@ jobs:
                 md += '| ' + u.naam + ' | ' + (u.ok ? '✅' : '❌') + ' | ' + u.detail + ' |\n';
               }
             } catch (e) {
-              md += '\n## Kernbronnen\n\nGeen rapport — de controle is niet afgerond.\n';
+              // Een onleesbaar rapport is geen 'geen nieuws': er is dan niets
+              // over de kernbronnen vastgesteld. Dat mag niet groen worden.
+              md += '\n## Kernbronnen\n\n⛔ Geen leesbaar rapport (' + e.message + ').\n';
+              md += 'Er is dus niets vastgesteld over de kernbronnen.\n';
+              zonderRapport = true;
             }
 
             console.log(md);
             require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
+            if (zonderRapport) process.exit(1);
           "
 
       - name: Issue openen bij kapotte links

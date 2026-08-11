@@ -291,6 +291,13 @@ const CONTROLES = [
 ];
 
 async function main() {
+  // In --json modus is stdout het rapport en niets anders. De productiecode die
+  // hieronder aangeroepen wordt schrijft haar voortgang naar console.log, en dat
+  // beland midden in de JSON — het bestand is daarna onleesbaar en het rapport
+  // verdwijnt zonder dat er iets over de bronnen gezegd wordt. Alle losse
+  // uitvoer gaat daarom naar stderr; alleen de JSON zelf gaat naar stdout.
+  if (alsJson) console.log = (...args) => console.error(...args);
+
   const uitkomsten = [];
 
   for (const c of CONTROLES) {
@@ -318,11 +325,12 @@ async function main() {
   }
 
   if (alsJson) {
-    console.log(JSON.stringify({
+    // Niet via console.log: die is hierboven omgeleid naar stderr.
+    process.stdout.write(JSON.stringify({
       gecontroleerd: uitkomsten.length,
       kapot: kapot.length,
       uitkomsten
-    }, null, 2));
+    }, null, 2) + '\n');
   }
 
   process.exit(kapot.length > 0 ? 1 : 0);

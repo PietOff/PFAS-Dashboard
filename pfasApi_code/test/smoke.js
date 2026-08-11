@@ -447,6 +447,14 @@ test('de kernbronnen worden op bruikbare inhoud gecontroleerd', () => {
   // hosting zijn allebei "geslaagd" als je alleen naar de statuscode kijkt.
   assert.ok(/numberOfRecords/.test(bron), 'de SRU-check kijkt niet naar het aantal records');
   assert.ok(/JSON\.parse/.test(bron), 'de geojson-check vangt de HTML-fallback niet af');
+
+  // In --json modus is stdout het rapport. De productiecode die wordt
+  // aangeroepen schrijft voortgang naar console.log; belandt dat in de JSON, dan
+  // is het rapport onleesbaar en verdwijnt de uitkomst zonder foutmelding.
+  assert.ok(/console\.log = /.test(bron),
+    'check-bronnen.js leidt console.log niet om; voortgang van de productiecode vervuilt de JSON');
+  assert.ok(/process\.stdout\.write\(JSON\.stringify/.test(bron),
+    'het JSON-rapport moet rechtstreeks naar stdout, niet via de omgeleide console.log');
 });
 
 // ------------------------------------------------------------------
