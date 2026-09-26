@@ -1,0 +1,11 @@
+{
+  "name": "pfas-appcheck",
+  "private": true,
+  "description": "Gebruikt het live dashboard in een echte browser, zoals een bezoeker dat doet.",
+  "scripts": {
+    "check": "node check-app.js"
+  },
+  "dependencies": {
+    "playwright-core": "^1.63.0"
+  }
+}

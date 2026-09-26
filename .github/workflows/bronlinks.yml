@@ -18,6 +18,8 @@ on:
       - 'pfasApi_code/gemeente_mapping.json'
       - 'pfasApi_code/check-links.js'
       - 'pfasApi_code/check-bronnen.js'
+      - 'appcheck/**'
+      - 'public/index.html'
 
 permissions:
   contents: read
@@ -55,6 +57,19 @@ jobs:
         run: node check-bronnen.js --json > /tmp/kernbronnen.json
         continue-on-error: true
 
+      # De bronnen kunnen allemaal kloppen terwijl de pagina toch niet werkt:
+      # een scriptfout, een gemeente die op de kaart anders heet dan in de API,
+      # een adreszoeker die niets vindt. Dus de pagina ook echt gebruiken, in de
+      # Chrome die op de runner staat.
+      - name: App in de browser gebruiken
+        id: app
+        working-directory: appcheck
+        run: |
+          npm ci
+          CHROME="$(command -v google-chrome || command -v chromium || true)" \
+            node check-app.js --json > /tmp/app.json
+        continue-on-error: true
+
       - name: Rapport bewaren
         uses: actions/upload-artifact@v4
         if: always()
@@ -63,6 +78,7 @@ jobs:
           path: |
             /tmp/bronlinks.json
             /tmp/kernbronnen.json
+            /tmp/app.json
           retention-days: 30
 
       - name: Samenvatting
@@ -106,7 +122,18 @@ jobs:
               zonderRapport = true;
             }
 
-            console.log(md);
+            try {
+            const a = require('/tmp/app.json');
+            md += '\n## App in de browser\n\n| Stap | Status | Detail |\n|---|---|---|\n';
+            for (const u of a.uitkomsten) {
+              md += '| ' + u.naam + ' | ' + (u.ok ? '✅' : '❌') + ' | ' + String(u.detail).replace(/\|/g, '/') + ' |\n';
+            }
+          } catch (e) {
+            md += '\n## App in de browser\n\n⛔ Geen leesbaar rapport (' + e.message + ').\n';
+            zonderRapport = true;
+          }
+
+          console.log(md);
             require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
             if (zonderRapport) process.exit(1);
           "
@@ -150,6 +177,6 @@ jobs:
               });
             }
 
-      - name: Falen als er links kapot zijn of een kernbron uitvalt
-        if: steps.check.outcome == 'failure' || steps.bronnen.outcome == 'failure'
+      - name: Falen als er links kapot zijn, een kernbron uitvalt of de app niet werkt
+        if: steps.check.outcome == 'failure' || steps.bronnen.outcome == 'failure' || steps.app.outcome == 'failure'
         run: exit 1
