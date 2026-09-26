@@ -380,6 +380,16 @@ function selecteerRelevanteTekst(text, maxLengte = 24000) {
  * @param {string} documentTekst 
  * @returns {Object|null}
  */
+// Kandidaatmodellen voor AI-extractie met automatische fallback bij quota-overschrijding
+// (Free Tier: 500 RPD) of tijdelijke capaciteitsproblemen (503/high demand).
+const GEMINI_MODELS = [
+  'gemini-3.1-flash-lite',
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite-preview',
+  'gemini-3-flash-preview'
+];
+let actieveModelIndex = 0;
+
 async function extractWaardenUitDocument(gemeenteNaam, documentTekst) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || !documentTekst) return null;
@@ -443,44 +453,51 @@ REGELS:
 8. Een ONTWERP-besluit stelt nog niets vast: zekerheid is dan altijd "laag".
 `;
 
-  const retries = 3;
-  let delay = 2000;
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash-lite',
-        contents: prompt
-        // GEEN Google Search tool — alleen de documenttekst analyseren
-      });
-      
-      let raw = response.text;
-      raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
-      return JSON.parse(raw);
-      
-    } catch (err) {
-      const isTransient = err.message && (
-        err.message.includes('503') || 
-        err.message.includes('429') || 
-        err.message.includes('demand') || 
-        err.message.includes('UNAVAILABLE') || 
-        err.message.includes('RESOURCE_EXHAUSTED')
-      );
-      if (isTransient && i < retries - 1) {
-        // Bij quota-overschrijding (429 / RESOURCE_EXHAUSTED) op de Free Tier duurt
-        // het herstel van het minuutvenster tot ~45-60s. Een retry na 2s/4s faalt gegarandeerd.
-        const isQuota = err.message.includes('429') || err.message.includes('RESOURCE_EXHAUSTED');
-        const m = err.message.match(/retry in ([\d\.]+)s/i) || err.message.match(/"retryDelay":\s*"(\d+)s"/i);
-        const retrySec = m ? Math.ceil(parseFloat(m[1])) + 2 : 45;
-        const wachtTijd = isQuota ? retrySec * 1000 : delay;
-        console.warn(`⚠️ Tijdelijke Gemini API fout (503/429) voor ${gemeenteNaam}. Retry in ${wachtTijd}ms... (Poging ${i + 1}/${retries})`);
-        await new Promise(resolve => setTimeout(resolve, wachtTijd));
-        delay *= 2; // Exponential backoff
-      } else {
-        console.error(`AI extractie gefaald voor ${gemeenteNaam}:`, err.message);
-        return null;
+  while (actieveModelIndex < GEMINI_MODELS.length) {
+    const model = GEMINI_MODELS[actieveModelIndex];
+    const retries = 2;
+
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: prompt
+        });
+
+        let raw = response.text;
+        raw = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(raw);
+
+      } catch (err) {
+        const msg = err.message || '';
+        const isDailyQuota = msg.includes('GenerateRequestsPerDayPerProjectPerModel-FreeTier');
+        const isUnavailable = msg.includes('503') || msg.includes('high demand') || msg.includes('UNAVAILABLE');
+
+        if (isDailyQuota || isUnavailable) {
+          console.warn(`⚠️ Model ${model} niet beschikbaar (${isDailyQuota ? 'dagquotum bereikt' : '503 capaciteit'}). Schakel direct over naar volgend model...`);
+          actieveModelIndex++;
+          break; // Breek uit de retry-loop van dit model, probeer direct volgend model
+        }
+
+        const isTransient = msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED');
+        if (isTransient && i < retries - 1) {
+          const m = msg.match(/retry in ([\d\.]+)s/i) || msg.match(/"retryDelay":\s*"(\d+)s"/i);
+          const retrySec = m ? Math.min(Math.ceil(parseFloat(m[1])) + 2, 30) : 15;
+          console.warn(`⚠️ Rate limit (429) voor ${model} (${gemeenteNaam}). Wacht ${retrySec}s... (Poging ${i + 1}/${retries})`);
+          await new Promise(resolve => setTimeout(resolve, retrySec * 1000));
+        } else {
+          console.error(`AI extractie gefaald voor ${gemeenteNaam} met ${model}:`, msg.slice(0, 150));
+          if (isTransient) {
+            actieveModelIndex++;
+          }
+          break;
+        }
       }
     }
   }
+
+  console.error(`❌ Alle kandidaatmodellen uitgeput voor ${gemeenteNaam}.`);
+  return null;
 }
 
 
@@ -746,15 +763,21 @@ const CONFIG_DOC = 'bekendmakingenSweep';
  *
  * @returns {'overgeslagen'|'verwerkt'|'mislukt'}
  */
-async function verwerkPublicatie(db, pub, { forceer = false } = {}) {
+async function verwerkPublicatie(db, pub, { forceer = false, alVerwerkt = null } = {}) {
   if (!pub.identifier) return 'mislukt';
 
-  const docRef = db.collection('pfasDocumenten').doc(toDocId(pub.identifier));
+  const docId = toDocId(pub.identifier);
 
   if (!forceer) {
-    const bestaand = await docRef.get();
-    if (bestaand.exists && bestaand.data().verwerktOp) return 'overgeslagen';
+    if (alVerwerkt && alVerwerkt.has(docId)) return 'overgeslagen';
+    if (!alVerwerkt) {
+      const docRef = db.collection('pfasDocumenten').doc(docId);
+      const bestaand = await docRef.get();
+      if (bestaand.exists && bestaand.data().verwerktOp) return 'overgeslagen';
+    }
   }
+
+  const docRef = db.collection('pfasDocumenten').doc(docId);
 
   const gemeenteId = toDocId(pub.gemeente);
   if (!gemeenteId || !pub.url) return 'mislukt';
@@ -796,6 +819,7 @@ async function verwerkPublicatie(db, pub, { forceer = false } = {}) {
     tekstLengte: ruweTekst.length
   }, { merge: true });
 
+  if (alVerwerkt) alVerwerkt.add(docId);
   return 'verwerkt';
 }
 
@@ -1029,6 +1053,20 @@ async function sweepBekendmakingen(db, { vanaf, forceer = false, maxDocumenten =
   const { records, totaal } = await zoekBekendmakingen({ vanaf });
   console.log(`   ${records.length} publicaties gevonden (API meldt ${totaal}).`);
 
+  // Pre-load de al verwerkte document-IDs uit Firestore. Hiermee voorkomen we
+  // honderden opeenvolgende Firestore get()-aanroepen tijdens het doorlopen van records.
+  const alVerwerkt = new Set();
+  if (!forceer) {
+    const docsSnapshot = await db.collection('pfasDocumenten').select('verwerktOp').get();
+    docsSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (data && data.verwerktOp) {
+        alVerwerkt.add(doc.id);
+      }
+    });
+    console.log(`   ${alVerwerkt.size} reeds verwerkte documenten geladen uit corpus.`);
+  }
+
   const resultaat = { gevonden: records.length, verwerkt: 0, overgeslagen: 0, mislukt: 0 };
   const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -1040,9 +1078,9 @@ async function sweepBekendmakingen(db, { vanaf, forceer = false, maxDocumenten =
       break;
     }
     try {
-      const uitkomst = await verwerkPublicatie(db, pub, { forceer });
+      const uitkomst = await verwerkPublicatie(db, pub, { forceer, alVerwerkt });
       resultaat[uitkomst]++;
-      if (uitkomst === 'verwerkt') await delay(5000); // rate limit Gemini (Free Tier: max 15 RPM)
+      if (uitkomst === 'verwerkt') await delay(2500); // rate limit Gemini (Free Tier)
     } catch (err) {
       console.error(`   ❌ ${pub.identifier}: ${err.message}`);
       resultaat.mislukt++;
