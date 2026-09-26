@@ -466,8 +466,14 @@ REGELS:
         err.message.includes('RESOURCE_EXHAUSTED')
       );
       if (isTransient && i < retries - 1) {
-        console.warn(`⚠️ Tijdelijke Gemini API fout (503/429) voor ${gemeenteNaam}. Retry in ${delay}ms... (Poging ${i + 1}/${retries})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        // Bij quota-overschrijding (429 / RESOURCE_EXHAUSTED) op de Free Tier duurt
+        // het herstel van het minuutvenster tot ~45-60s. Een retry na 2s/4s faalt gegarandeerd.
+        const isQuota = err.message.includes('429') || err.message.includes('RESOURCE_EXHAUSTED');
+        const m = err.message.match(/retry in ([\d\.]+)s/i) || err.message.match(/"retryDelay":\s*"(\d+)s"/i);
+        const retrySec = m ? Math.ceil(parseFloat(m[1])) + 2 : 45;
+        const wachtTijd = isQuota ? retrySec * 1000 : delay;
+        console.warn(`⚠️ Tijdelijke Gemini API fout (503/429) voor ${gemeenteNaam}. Retry in ${wachtTijd}ms... (Poging ${i + 1}/${retries})`);
+        await new Promise(resolve => setTimeout(resolve, wachtTijd));
         delay *= 2; // Exponential backoff
       } else {
         console.error(`AI extractie gefaald voor ${gemeenteNaam}:`, err.message);
@@ -1036,7 +1042,7 @@ async function sweepBekendmakingen(db, { vanaf, forceer = false, maxDocumenten =
     try {
       const uitkomst = await verwerkPublicatie(db, pub, { forceer });
       resultaat[uitkomst]++;
-      if (uitkomst === 'verwerkt') await delay(2000); // rate limit Gemini
+      if (uitkomst === 'verwerkt') await delay(5000); // rate limit Gemini (Free Tier: max 15 RPM)
     } catch (err) {
       console.error(`   ❌ ${pub.identifier}: ${err.message}`);
       resultaat.mislukt++;
