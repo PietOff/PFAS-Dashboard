@@ -36,7 +36,7 @@ async function fetchData(gemeente) {
     genx: {
       wonen: 3.0,
       industrie: 3.0,
-      landbouwNatuur: 0.8,
+      landbouwNatuur: 1.4,
     },
     bronLink: "https://www.odmh.nl/themas/bodem/bodemkwaliteitskaart/ (Via ODMH API)",
     opmerkingen: "Data 100% accuraat ingeladen via de ArcGIS API van de Omgevingsdienst Midden-Holland.",

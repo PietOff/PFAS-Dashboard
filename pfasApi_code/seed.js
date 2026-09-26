@@ -15,7 +15,7 @@ const fallbackData = [
     provincie: "Zuid-Holland",
     pfoa: { wonen: 7.0, industrie: 7.0, landbouwNatuur: 1.9 },
     pfos: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 1.4 },
-    genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 0.8 },
+    genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 1.4 },
     laatstGeupdate: "2024-01-15",
     opmerkingen: "Volgt landelijk Handelingskader voor grondverzet. Kaarten en details via DCMR bodemloket.",
     bronLink: "https://www.dcmr.nl/bodem/pfas"
@@ -26,7 +26,7 @@ const fallbackData = [
     provincie: "Noord-Holland",
     pfoa: { wonen: 7.0, industrie: 7.0, landbouwNatuur: 1.9 },
     pfos: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 1.4 },
-    genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 0.8 },
+    genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 1.4 },
     laatstGeupdate: "2025-01-01",
     opmerkingen: "Nieuwe Bodemkwaliteitskaart in 2025 vastgesteld. Let op: alle PFAS gelden als ZZS.",
     bronLink: "https://odnzkg.nl/themas/bodem/pfas/"
@@ -37,7 +37,7 @@ const fallbackData = [
     provincie: "Noord-Brabant",
     pfoa: { wonen: 7.0, industrie: 7.0, landbouwNatuur: 1.9 },
     pfos: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 1.4 },
-    genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 0.8 },
+    genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 1.4 },
     laatstGeupdate: "2024-05-12",
     opmerkingen: "Volgt landelijk handelingskader (update dec 2023).",
     bronLink: "https://odbn.nl/pfas/"

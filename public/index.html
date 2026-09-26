@@ -259,8 +259,9 @@
   const TOESTAND = {
     'officiele-bekendmaking': { label: 'Afwijkend lokaal beleid', kleur: 'var(--afwijkend)', hatch: false, tag: 'afw' },
     'handmatig':              { label: 'Afwijkend lokaal beleid', kleur: 'var(--afwijkend)', hatch: false, tag: 'afw' },
+    'curatie':                { label: 'Afwijkend lokaal beleid', kleur: 'var(--afwijkend)', hatch: false, tag: 'afw' },
     'mogelijk-afwijkend':     { label: 'Mogelijk afwijkend — niet geverifieerd', kleur: 'var(--afwijkend)', hatch: true, tag: 'afw' },
-    'landelijk-kader-aanname':{ label: 'Volgt landelijk kader', kleur: 'var(--kader)', hatch: false, tag: 'kader' },
+    'landelijk-kader-aanname':{ label: 'Landelijk kader (aangenomen)', kleur: 'var(--kader)', hatch: false, tag: 'kader' },
     'geen-data':              { label: 'Nog geen data', kleur: 'var(--geen-data)', hatch: false, tag: 'kader' }
   };
 
@@ -279,6 +280,28 @@
 
   let records = [];
   let perId = new Map();
+  // Kaart, Locatieserver en API schrijven sommige namen anders: "Bergen (NH.)"
+  // tegenover "Bergen (NH)", "Hengelo" tegenover "Hengelo (O)". Zonder deze
+  // vertaling bleven die gemeenten grijs op de kaart.
+  let aliasId = new Map();
+  const sleutel = (n) => toId(String(n == null ? '' : n).replace(/\./g, ''));
+  const kaal = (n) => sleutel(String(n == null ? '' : n).replace(/\s*\([^)]*\)\s*$/, ''));
+  function vindId(naam) {
+    const id = toId(naam);
+    if (perId.has(id)) return id;
+    return aliasId.get(sleutel(naam)) || aliasId.get(kaal(naam)) || id;
+  }
+  function bouwAliassen() {
+    aliasId = new Map();
+    const telKaal = new Map();
+    for (const r of records) telKaal.set(kaal(r.gemeente), (telKaal.get(kaal(r.gemeente)) || 0) + 1);
+    for (const r of records) {
+      const id = r.id || toId(r.gemeente);
+      aliasId.set(sleutel(r.gemeente), id);
+      // Alleen zonder toevoeging als dat eenduidig is: "bergen" hoort bij twee.
+      if (telKaal.get(kaal(r.gemeente)) === 1 && !aliasId.has(kaal(r.gemeente))) aliasId.set(kaal(r.gemeente), id);
+    }
+  }
   let paden = [];
   let tabAfwijkend = false;
 
@@ -429,7 +452,7 @@
       if (!naam || !f.geometry) continue;
       const d = padVan(f.geometry, pr);
       if (!d) continue;
-      const id = toId(naam);
+      const id = vindId(naam);
       const t = toestandVan(perId.get(id));
 
       const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -597,12 +620,12 @@
 
     el('pills').innerHTML =
       `<span class="pill"><i style="background:var(--ink-muted)"></i>Totaal: ${records.length}</span>` +
-      `<span class="pill kader"><i style="background:var(--kader)"></i>Volgt landelijk kader: ${kader}</span>` +
+      `<span class="pill kader"><i style="background:var(--kader)"></i>Landelijk kader (aangenomen): ${kader}</span>` +
       `<span class="pill afw"><i style="background:var(--afwijkend)"></i>Afwijkend beleid: ${afw}</span>` +
       (rev ? `<span class="pill rev"><i style="background:var(--afwijkend)"></i>Te controleren: ${rev}</span>` : '');
 
     el('legend').innerHTML = [
-      ['Volgt landelijk kader', 'var(--kader)', false],
+      ['Landelijk kader (aangenomen)', 'var(--kader)', false],
       ['Afwijkend lokaal beleid', 'var(--afwijkend)', false],
       ['Mogelijk afwijkend — niet geverifieerd', 'var(--afwijkend)', true],
       ['Nog geen data', 'var(--geen-data)', false]
@@ -633,7 +656,7 @@
         uit.textContent = 'Geen locatie gevonden voor "' + q + '".';
         return;
       }
-      const id = toId(doc.gemeentenaam);
+      const id = vindId(doc.gemeentenaam);
       const rec = perId.get(id);
       uit.innerHTML = `${esc(doc.weergavenaam)} ligt in gemeente <strong>${esc(doc.gemeentenaam)}</strong>.` +
         (rec ? '' : ' Voor die gemeente staan nog geen normen in de database.');
@@ -673,6 +696,7 @@
       return;
     }
     perId = new Map(records.map(r => [r.id || toId(r.gemeente), r]));
+    bouwAliassen();
 
     tekenPillsEnLegenda();
     tekenTabel();

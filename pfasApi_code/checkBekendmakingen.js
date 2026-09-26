@@ -209,6 +209,17 @@ async function zoekRecenteBekendmakingen(dagenTerug = 7) {
 // Landelijk kader referentiewaarden
 const LANDELIJK = pfasNormen.landelijk_kader;
 
+// Handmatig geverifieerde afwijkingen uit pfas_normen.json, op document-id.
+// Die zijn leidend boven wat de AI uit een gemeenteblad haalt.
+const CURATIE = new Map(
+  Object.entries(pfasNormen.afwijkend || {}).map(([naam, data]) => [toDocId(naam), { naam, ...data }])
+);
+
+// Een ontwerpbesluit stelt nog niets vast. Almere stond zo op "afwijkend
+// beleid" op basis van een ontwerp-omgevingsplan.
+const isOntwerp = (titel) => /^\s*(ontwerp|voorontwerp|concept)\b/i.test(String(titel || '')) ||
+  /\bontwerp[- ]?(besluit|wijziging|omgevingsplan|nota|bestemmingsplan)\b/i.test(String(titel || ''));
+
 /**
  * Haal de volledige tekst op van een officiële bekendmaking
  * @param {string} docUrl - URL van het document
@@ -327,7 +338,8 @@ bevat die AFWIJKEN van het landelijke Tijdelijk Handelingskader.
 Het landelijke kader is:
 - PFOS: Wonen/Industrie 3.0 µg/kg ds, Landbouw/Natuur 1.4 µg/kg ds
 - PFOA: Wonen/Industrie 7.0 µg/kg ds, Landbouw/Natuur 1.9 µg/kg ds
-- GenX: Wonen/Industrie 3.0 µg/kg ds, Landbouw/Natuur 0.8 µg/kg ds
+- GenX en elke andere PFAS: Wonen/Industrie 3.0 µg/kg ds, Landbouw/Natuur 1.4 µg/kg ds
+- Binnen grondwaterbeschermings- en waterwingebieden: 0.1 µg/kg ds (bepalingsgrens) voor alle PFAS
 
 DOCUMENT TEKST:
 ---
@@ -362,6 +374,15 @@ REGELS:
      (bijv. een voorbeeld, een verwijzing of een tabel zonder context)
 5. Als je geen concrete getallen vindt, zet heeftAfwijkendeWaarden op false.
 6. Verwijst het document alleen naar het landelijk kader zonder eigen waarden: false.
+   Een tabel die de landelijke waarden hierboven herhaalt ("elke andere
+   PFAS-verbinding 1,4") is GEEN afwijking.
+7. Negeer waarden die alleen gelden voor een bijzondere situatie, want dat zijn
+   geen normen voor de bodemfunctieklassen:
+   - grondwaterbeschermings- en waterwingebieden (meestal 0,1)
+   - toelaatbare kwaliteit bij (zeer) bodemgevoelig gebruik, moestuinen,
+     speelplaatsen of interventie-/INEV-waarden
+   - toepassen in oppervlaktewater, waterbodem of diepe plassen
+8. Een ONTWERP-besluit stelt nog niets vast: zekerheid is dan altijd "laag".
 `;
 
   const retries = 3;
@@ -426,6 +447,11 @@ function filterPlausibeleWaarden(ruw) {
         verworpen.push({ stof, klasse, waarde: val, reden: 'geen getal' });
       } else if (val <= 0) {
         verworpen.push({ stof, klasse, waarde: val, reden: 'nul of negatief' });
+      } else if (val <= 0.1) {
+        // De bepalingsgrens. In een nota bodembeheer is dat vrijwel altijd de
+        // eis voor grondwaterbeschermingsgebieden, niet de norm voor een
+        // bodemfunctieklasse. Houten kwam zo op 0,1 voor alles te staan.
+        verworpen.push({ stof, klasse, waarde: val, reden: 'bepalingsgrens (grondwaterbeschermingsgebied)' });
       } else if (val > 50) {
         // Vrijwel altijd een eenheidsverwarring (ng/kg) of een andere stof.
         verworpen.push({ stof, klasse, waarde: val, reden: 'boven 50 µg/kg' });
@@ -598,51 +624,13 @@ async function checkOfficieleBekendmakingen(db, dagenTerug = 7) {
         status: 'open'
       };
       
-      // 6. AUTOMATISCH UPDATEN als ALLE voorwaarden zijn voldaan:
-      //    - Bron is officielebekendmakingen.nl ✅ (altijd waar hier)
-      //    - Waarden zijn valide (tussen 0-50) ✅
-      //    - AI zekerheid is "hoog" ✅
-      //    - Waarden wijken echt af van landelijk kader ✅
-      const magAutoUpdaten = waardenValide && 
-                             analyse.zekerheid === 'hoog' && 
-                             wijktAf;
-      
-      if (magAutoUpdaten) {
-        console.log('   ✅✅ ALLE CRITERIA VOLDAAN → Automatisch updaten!');
-        
-        // Update de live database
-        const updateData = {
-          heeftAfwijkendBeleid: true,
-          bronLink: pub.url,
-          opmerkingen: `Afwijkend beleid vastgesteld per ${pub.date}. Bron: ${pub.title} (${pub.identifier}).`,
-          laatstGeupdate: new Date().toISOString().split('T')[0],
-          confidenceScore: 100,
-          bronType: 'officielebekendmakingen.nl'
-        };
-        
-        // Voeg de gevonden waarden toe. Ontbrekende klassen vallen terug op de
-        // waarden die al in Firestore staan, anders op het landelijk kader —
-        // nooit op null.
-        const bestaand = (await db.collection('pfasData').doc(docId).get()).data() || {};
-        const gevonden = analyse.gevondenWaarden || {};
+      // 6. Alleen een signaal, nooit direct naar pfasData. De getallen in het
+      //    dashboard komen uitsluitend uit herbouwAfwijkingen, zodat curatie
+      //    en herbeoordeling niet omzeild worden.
+      signaalData.status = waardenValide ? 'open' : 'twijfelachtig';
+      resultaten.signalen++;
+      console.log('   📝 Opgeslagen als signaal; de sweep verwerkt het document.');
 
-        for (const stof of ['pfos', 'pfoa', 'genx']) {
-          const samengevoegd = mergeStofWaarden(gevonden[stof], bestaand[stof] || LANDELIJK[stof]);
-          if (samengevoegd) updateData[stof] = samengevoegd;
-        }
-
-        await db.collection('pfasData').doc(docId).set(updateData, { merge: true });
-        
-        signaalData.status = 'automatisch-verwerkt';
-        resultaten.autoUpdates++;
-        
-        console.log(`   ✅ Database bijgewerkt voor ${pub.gemeente}`);
-      } else {
-        console.log('   📝 Opgeslagen als signaal voor handmatige review.');
-        signaalData.status = waardenValide ? 'open' : 'twijfelachtig';
-        resultaten.signalen++;
-      }
-      
       // Sla het signaal altijd op (voor audit trail).
       // Zonder identifier zou het id op "-null" eindigen en elke volgende
       // publicatie van dezelfde gemeente overschrijven.
@@ -748,6 +736,127 @@ async function verwerkPublicatie(db, pub, { forceer = false } = {}) {
 }
 
 /**
+ * Beoordeelt één verwerkt document opnieuw met het HUIDIGE landelijk kader.
+ *
+ * `heeftAfwijkendeWaarden` op het document is berekend met het kader van het
+ * moment van verwerken. Stond dat kader verkeerd (GenX landbouw/natuur 0,8 in
+ * plaats van 1,4), dan blijft het document anders voor altijd "afwijkend" —
+ * zo kwamen Leiden, Voorschoten en vijf andere gemeenten op afwijkend beleid
+ * terwijl hun nota alleen het landelijk kader herhaalt.
+ *
+ * @returns {{waarden: Object|null, afwijkend: boolean, zeker: boolean}}
+ */
+function herbeoordeelDocument(data) {
+  const { waarden } = filterPlausibeleWaarden(data.ruweWaarden || data.gevondenWaarden);
+  const afwijkend = Boolean(waarden && wijktAfVanLandelijkKader(waarden));
+  const zeker = data.aiZekerheid === 'hoog' && !isOntwerp(data.titel);
+  return { waarden, afwijkend, zeker };
+}
+
+/**
+ * Leidt de toestand van één gemeente af. Puur: geen Firestore, zodat het
+ * zonder credentials te testen is.
+ *
+ * Volgorde van gezag:
+ *   1. curatie uit pfas_normen.json (handmatig geverifieerd)
+ *   2. een vastgesteld gemeenteblad met hoge AI-zekerheid
+ *   3. een gevonden maar onzekere afwijking  → mogelijk-afwijkend
+ *   4. niets gevonden                        → landelijk-kader-aanname
+ *
+ * Elke tak schrijft ALLE velden die een andere tak zet, zodat er geen restant
+ * van een vorige toestand blijft staan (tekst "PFOS industrie 7,0" onder een
+ * tabel met 3,0, of een bronDocument bij een gemeente zonder document).
+ */
+function leidGemeenteAf({ bron, curatie, bronLinkStandaard, vandaag }) {
+  const leeg = {
+    bronDocument: null,
+    bronDocumentTitel: null,
+    bronDocumentDatum: null,
+    mogelijkeWaarden: null,
+    laatstGecontroleerd: vandaag
+  };
+
+  if (curatie) {
+    return {
+      ...leeg,
+      heeftAfwijkendBeleid: true,
+      herkomst: 'curatie',
+      tereviewen: false,
+      bronType: 'curatie',
+      bronLink: curatie.bronLink || bronLinkStandaard || null,
+      omgevingsdienst: curatie.omgevingsdienst || null,
+      opmerkingen: curatie.opmerkingen || null,
+      confidenceScore: 100,
+      pfos: { ...LANDELIJK.pfos, ...curatie.pfos },
+      pfoa: { ...LANDELIJK.pfoa, ...curatie.pfoa },
+      genx: { ...LANDELIJK.genx, ...curatie.genx }
+    };
+  }
+
+  if (bron && bron.zeker) {
+    const update = {
+      ...leeg,
+      heeftAfwijkendBeleid: true,
+      herkomst: 'officiele-bekendmaking',
+      tereviewen: false,
+      bronLink: bron.url,
+      bronType: 'officielebekendmakingen.nl',
+      bronDocument: bron.identifier,
+      bronDocumentTitel: bron.titel,
+      bronDocumentDatum: bron.publicatieDatum,
+      opmerkingen: `Afwijkend beleid vastgesteld per ${bron.publicatieDatum}. Bron: ${bron.titel} (${bron.identifier}).`,
+      confidenceScore: 100
+    };
+    // Basis is het landelijk kader, niet wat er al stond: dat kan een
+    // restant zijn van een eerdere, verkeerde afleiding.
+    for (const stof of ['pfos', 'pfoa', 'genx']) {
+      update[stof] = mergeStofWaarden(bron.waarden?.[stof], LANDELIJK[stof]) || { ...LANDELIJK[stof] };
+    }
+    return update;
+  }
+
+  if (bron) {
+    // Wel een afwijking gevonden, maar onzeker of uit een ontwerp. Geen
+    // getallen overnemen — wel zichtbaar maken dat hier iets ligt.
+    return {
+      ...leeg,
+      heeftAfwijkendBeleid: false,
+      herkomst: 'mogelijk-afwijkend',
+      tereviewen: true,
+      bronLink: bron.url,
+      bronType: 'officielebekendmakingen.nl',
+      bronDocument: bron.identifier,
+      bronDocumentTitel: bron.titel,
+      bronDocumentDatum: bron.publicatieDatum,
+      mogelijkeWaarden: bron.waarden || null,
+      opmerkingen: `Mogelijk afwijkend beleid gevonden in ${bron.titel} (${bron.identifier}), ` +
+        `nog niet geverifieerd${isOntwerp(bron.titel) ? ' (ontwerpbesluit, nog niet vastgesteld)' : ''}. ` +
+        `Het dashboard toont het landelijk kader; raadpleeg het besluit en de omgevingsdienst voordat u hierop vertrouwt.`,
+      confidenceScore: 50,
+      pfos: { ...LANDELIJK.pfos },
+      pfoa: { ...LANDELIJK.pfoa },
+      genx: { ...LANDELIJK.genx }
+    };
+  }
+
+  // Geen officieel document gevonden. Dat is een AANNAME, geen vaststelling,
+  // en moet als zodanig in het dashboard herkenbaar zijn.
+  return {
+    ...leeg,
+    heeftAfwijkendBeleid: false,
+    herkomst: 'landelijk-kader-aanname',
+    tereviewen: false,
+    bronType: null,
+    bronLink: bronLinkStandaard || null,
+    opmerkingen: LANDELIJK.opmerkingen,
+    confidenceScore: 100,
+    pfos: { ...LANDELIJK.pfos },
+    pfoa: { ...LANDELIJK.pfoa },
+    genx: { ...LANDELIJK.genx }
+  };
+}
+
+/**
  * Leidt de toestand per gemeente af uit het volledige documentcorpus.
  *
  * Dit is de stap die "welke gemeenten wijken af" beantwoordt. Hij kijkt niet
@@ -756,113 +865,65 @@ async function verwerkPublicatie(db, pub, { forceer = false } = {}) {
  * documenten ooit binnenkwamen.
  *
  * Elke gemeente krijgt een expliciete herkomst:
+ *   'curatie'                 - handmatig geverifieerd in pfas_normen.json
  *   'officiele-bekendmaking'  - waarden komen uit een gemeenteblad
+ *   'mogelijk-afwijkend'      - afwijking gevonden, nog niet geverifieerd
  *   'landelijk-kader-aanname' - geen document gevonden; landelijk kader aangenomen
  *   'handmatig'               - handmatig overschreven via de Google Sheet
  */
 async function herbouwAfwijkingen(db) {
   const docs = await db.collection('pfasDocumenten').get();
 
-  // Nieuwste afwijkende document per gemeente wint.
-  //
-  // Documenten met lage AI-zekerheid worden NIET weggegooid. Ze leveren geen
-  // getallen aan het dashboard, maar de gemeente komt wel op 'mogelijk-afwijkend'
-  // te staan met een verwijzing naar het besluit. Anders zou een gevonden
-  // afwijking stilletjes verdwijnen achter de mededeling "volgt landelijk kader",
-  // en dat is precies de fout die je hier niet wilt maken.
+  // Nieuwste afwijkende document per gemeente wint; zeker gaat voor onzeker.
+  // Onzekere documenten worden NIET weggegooid: de gemeente komt dan op
+  // 'mogelijk-afwijkend' in plaats van stilzwijgend op het landelijk kader.
   const perGemeente = new Map();
   docs.forEach(d => {
     const data = d.data();
-    if (!data.gemeenteId || !data.heeftAfwijkendeWaarden) return;
+    if (!data.gemeenteId) return;
+    const oordeel = herbeoordeelDocument(data);
+    if (!oordeel.afwijkend) return;
 
+    const kandidaat = { ...data, ...oordeel };
     const huidig = perGemeente.get(data.gemeenteId);
-    if (!huidig) { perGemeente.set(data.gemeenteId, data); return; }
-
-    // Zeker gaat voor onzeker; daarna wint de nieuwste publicatie.
-    const zeker = (x) => x.aiZekerheid === 'hoog' ? 1 : 0;
-    if (zeker(data) > zeker(huidig) ||
-        (zeker(data) === zeker(huidig) &&
-         String(data.publicatieDatum || '') > String(huidig.publicatieDatum || ''))) {
-      perGemeente.set(data.gemeenteId, data);
+    if (!huidig ||
+        Number(kandidaat.zeker) > Number(huidig.zeker) ||
+        (kandidaat.zeker === huidig.zeker &&
+         String(kandidaat.publicatieDatum || '') > String(huidig.publicatieDatum || ''))) {
+      perGemeente.set(data.gemeenteId, kandidaat);
     }
   });
 
+  const mapping = require('./gemeente_mapping.json');
+  const standaardLink = new Map(Object.entries(mapping).map(([naam, url]) => [toDocId(naam), url]));
+
   const pfasData = await db.collection('pfasData').get();
+  const vandaag = new Date().toISOString().split('T')[0];
   const updates = [];
-  let afwijkend = 0;
-  let aanname = 0;
-  let teReviewen = 0;
+  const telling = { curatie: 0, afwijkend: 0, teReviewen: 0, aanname: 0 };
 
   pfasData.forEach(doc => {
     const bestaand = doc.data();
     if (bestaand.handmatigeOverschrijving === true) return;
 
-    const bron = perGemeente.get(doc.id);
+    // Een bronlink die naar een gemeenteblad wees hoort niet te blijven
+    // staan als dat gemeenteblad niet meer als bron geldt.
+    const oudeLinkIsDocument = /officielebekendmakingen|repository\.overheid\.nl/.test(bestaand.bronLink || '');
+    const bronLinkStandaard = standaardLink.get(doc.id) || (oudeLinkIsDocument ? null : bestaand.bronLink);
 
-    if (bron && bron.aiZekerheid === 'hoog') {
-      const update = {
-        heeftAfwijkendBeleid: true,
-        herkomst: 'officiele-bekendmaking',
-        bronLink: bron.url,
-        bronType: 'officielebekendmakingen.nl',
-        bronDocument: bron.identifier,
-        bronDocumentTitel: bron.titel,
-        bronDocumentDatum: bron.publicatieDatum,
-        opmerkingen: `Afwijkend beleid vastgesteld per ${bron.publicatieDatum}. Bron: ${bron.titel} (${bron.identifier}).`,
-        confidenceScore: 100,
-        tereviewen: false,
-        laatstGecontroleerd: new Date().toISOString().split('T')[0]
-      };
-      for (const stof of ['pfos', 'pfoa', 'genx']) {
-        const samengevoegd = mergeStofWaarden(bron.gevondenWaarden?.[stof], bestaand[stof] || LANDELIJK[stof]);
-        if (samengevoegd) update[stof] = samengevoegd;
-      }
-      updates.push({ ref: doc.ref, data: update });
-      afwijkend++;
+    const data = leidGemeenteAf({
+      bron: perGemeente.get(doc.id),
+      curatie: CURATIE.get(doc.id),
+      bronLinkStandaard,
+      vandaag
+    });
 
-    } else if (bron) {
-      // Wel een afwijking gevonden, maar de AI was er niet zeker van. Geen
-      // getallen overnemen — wel zichtbaar maken dat hier iets ligt.
-      updates.push({
-        ref: doc.ref,
-        data: {
-          heeftAfwijkendBeleid: false,
-          herkomst: 'mogelijk-afwijkend',
-          tereviewen: true,
-          bronLink: bron.url,
-          bronDocument: bron.identifier,
-          bronDocumentTitel: bron.titel,
-          bronDocumentDatum: bron.publicatieDatum,
-          mogelijkeWaarden: bron.gevondenWaarden || null,
-          opmerkingen: `Mogelijk afwijkend beleid gevonden in ${bron.titel} (${bron.identifier}), ` +
-            `nog niet geverifieerd. Het dashboard toont het landelijk kader; ` +
-            `raadpleeg het besluit en de omgevingsdienst voordat u hierop vertrouwt.`,
-          pfos: { ...LANDELIJK.pfos },
-          pfoa: { ...LANDELIJK.pfoa },
-          genx: { ...LANDELIJK.genx },
-          confidenceScore: 50,
-          laatstGecontroleerd: new Date().toISOString().split('T')[0]
-        }
-      });
-      teReviewen++;
+    if (data.herkomst === 'curatie') telling.curatie++;
+    else if (data.herkomst === 'officiele-bekendmaking') telling.afwijkend++;
+    else if (data.herkomst === 'mogelijk-afwijkend') telling.teReviewen++;
+    else telling.aanname++;
 
-    } else {
-      // Geen officieel document gevonden. Dat is een AANNAME, geen vaststelling,
-      // en moet als zodanig in het dashboard herkenbaar zijn.
-      updates.push({
-        ref: doc.ref,
-        data: {
-          heeftAfwijkendBeleid: false,
-          herkomst: 'landelijk-kader-aanname',
-          tereviewen: false,
-          pfos: { ...LANDELIJK.pfos },
-          pfoa: { ...LANDELIJK.pfoa },
-          genx: { ...LANDELIJK.genx },
-          laatstGecontroleerd: new Date().toISOString().split('T')[0]
-        }
-      });
-      aanname++;
-    }
+    updates.push({ ref: doc.ref, data });
   });
 
   const LIMIET = 400;
@@ -872,7 +933,7 @@ async function herbouwAfwijkingen(db) {
     await batch.commit();
   }
 
-  return { afwijkend, teReviewen, aanname, documentenInCorpus: docs.size };
+  return { ...telling, documentenInCorpus: docs.size };
 }
 
 /**
@@ -904,9 +965,11 @@ async function sweepBekendmakingen(db, { vanaf, forceer = false, maxDocumenten =
   const resultaat = { gevonden: records.length, verwerkt: 0, overgeslagen: 0, mislukt: 0 };
   const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
+  let limietBereikt = false;
   for (const pub of records) {
     if (resultaat.verwerkt >= maxDocumenten) {
       console.log(`   Limiet van ${maxDocumenten} nieuwe documenten bereikt; rest volgende run.`);
+      limietBereikt = true;
       break;
     }
     try {
@@ -921,14 +984,20 @@ async function sweepBekendmakingen(db, { vanaf, forceer = false, maxDocumenten =
 
   const afgeleid = await herbouwAfwijkingen(db);
 
-  // Watermerk pas bijwerken als alles gelukt is, met een dag overlap tegen
-  // publicaties die net na de vorige run zijn toegevoegd.
+  // Watermerk alleen bijwerken als ALLES verwerkt is, met een dag overlap
+  // tegen publicaties die net na de vorige run zijn toegevoegd. Stopte de run
+  // op de limiet of mislukte er een document, dan blijft het watermerk staan:
+  // anders valt de rest buiten het venster van elke volgende run en wordt hij
+  // nooit meer bekeken. Al verwerkte documenten worden overgeslagen, dus
+  // opnieuw beginnen bij het oude watermerk kost geen AI-calls.
+  const compleet = !limietBereikt && resultaat.mislukt === 0;
   const gisteren = new Date();
   gisteren.setDate(gisteren.getDate() - 1);
   await configRef.set({
-    laatsteGeslaagdeRun: gisteren.toISOString().split('T')[0],
+    ...(compleet ? { laatsteGeslaagdeRun: gisteren.toISOString().split('T')[0] } : {}),
     laatsteRunOp: new Date().toISOString(),
-    laatsteResultaat: { ...resultaat, ...afgeleid }
+    laatsteRunCompleet: compleet,
+    laatsteResultaat: { ...resultaat, ...afgeleid, compleet }
   }, { merge: true });
 
   console.log(`🧹 Sweep klaar:`, JSON.stringify({ ...resultaat, ...afgeleid }));
@@ -944,6 +1013,10 @@ module.exports = {
   bouwCqlQuery,
   sweepBekendmakingen,
   herbouwAfwijkingen,
+  herbeoordeelDocument,
+  leidGemeenteAf,
+  isOntwerp,
+  wijktAfVanLandelijkKader,
   haalDocumentTekst,
   haalPagina,
   SRU_BASE

@@ -280,6 +280,7 @@ Daarom krijgt elke gemeente een expliciete `herkomst`:
 
 | `herkomst` | Betekenis |
 | --- | --- |
+| `curatie` | Handmatig geverifieerde afwijking uit `pfas_normen.json`. Gaat vóór wat de AI vindt |
 | `officiele-bekendmaking` | Waarden komen uit een gemeenteblad; `bronDocument` verwijst naar het exacte besluit |
 | `mogelijk-afwijkend` | Er is een afwijking gevonden maar niet geverifieerd. Toont het landelijk kader, met verwijzing naar het besluit. `tereviewen: true` |
 | `landelijk-kader-aanname` | **Geen document gevonden.** Het landelijk kader is aangenomen, niet vastgesteld |
@@ -301,6 +302,53 @@ Voor iemand die op basis hiervan grond laat keuren is het verschil tussen "dit
 is vastgesteld beleid" en "hier is niets over gevonden" precies het verschil dat
 telt. Het dashboard hoort daarbij door te verwijzen naar de bronlink en de
 omgevingsdienst — het vervangt geen milieuhygiënische verklaring.
+
+### Normen-controle september 2026
+
+Een inhoudelijke controle tegen de bronnen vond vier fouten die geen van de
+bestaande controles zag, omdat ze allemaal "gezond" rapporteerden:
+
+1. **GenX landbouw/natuur stond op 0,8; het is 1,4.** Het handelingskader
+   (versie december 2023, IPLO) geeft voor landbouw/natuur PFOS 1,4, PFOA 1,9
+   en *overige PFAS incl. GenX* 1,4. De 0,8 is de waarde voor toepassen in
+   oppervlaktewater. Alle gemeenten op het landelijk kader toonden dus een
+   verkeerde GenX-norm.
+2. **Daardoor waren elf "afwijkingen" vals.** De AI kreeg 0,8 als kader mee en
+   zag elke nota die het echte kader (1,4) herhaalt als afwijkend: Leiden,
+   Voorschoten, Zoeterwoude, Nieuwkoop, Kaag en Braassem, Maassluis,
+   Vlaardingen. Almere kwam erop via een *ontwerp*-besluit en een tabel voor
+   zeer bodemgevoelig gebruik; Houten via 0,1, de eis in drinkwatergebieden.
+3. **De herbouw wiste de gecureerde afwijkingen.** Elke gemeente zonder
+   gemeenteblad ging terug naar het landelijk kader, ook Rotterdam, Dordrecht,
+   Nieuwegein, Helmond en OZHZ zone B. De toelichting bleef staan, dus de
+   tabel zei "PFOS industrie 3,0" en de tekst eronder "7,0".
+4. **`nightlyBekendmakingen` schreef AI-getallen direct in `pfasData`**, buiten
+   curatie en herbouw om.
+
+Wat er nu anders is:
+
+- `herbouwAfwijkingen` beoordeelt elk document opnieuw met het huidige kader
+  (`herbeoordeelDocument`), telt ontwerpbesluiten nooit als vastgesteld, en
+  zet waarden ≤ 0,1 opzij als grondwaterbeschermingseis.
+- Curatie uit `pfas_normen.json` gaat voor alles behalve een handmatige
+  overschrijving. Elke tak van de herbouw schrijft alle velden, zodat er geen
+  oud `bronDocument` of oude toelichting blijft hangen.
+- De nachtelijke job draait nu de sweep zelf (niet op maandag, dan draait de
+  wekelijkse). Alleen de herbouw schrijft normen.
+- Het watermerk schuift alleen op als een run alles verwerkt heeft. Stopte hij
+  op `max` of mislukte er een document, dan pakt de volgende run het op.
+- `auditData` en `healthCheck` melden `inconsistenteNormen`: getoonde waarden
+  die niet overeenkomen met hun herkomst (curatie of landelijk kader).
+- De kaart koppelt "Bergen (NH.)", "Bergen (L.)" en "Hengelo" aan de juiste
+  gemeente; die bleven grijs.
+
+**Na deploy:** Data-onderhoud → `herbouw`, daarna `audit`. Verwacht
+`inconsistenteNormen: 0` en 12 gemeenten met herkomst `curatie`.
+
+Nog na te lopen door iemand met lokale kennis: **Maasdriel en Zaltbommel**
+(PFOA landbouw/natuur 2,8 uit de Rivierenland-nota; dat getal is in de tekst
+niet terug te vinden) en **Houten** (PFOA-zones rond Chemours staan in de nota,
+maar niet als losse normen die de AI kon lezen).
 
 ### Kernbronnen
 

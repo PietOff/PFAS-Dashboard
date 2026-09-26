@@ -79,7 +79,7 @@ async function scanForNewPolicy(gemeenteNaam) {
   Het landelijke kader is:
   - PFOS: Wonen/Industrie 3.0 µg/kg, Landbouw/Natuur 1.4 µg/kg
   - PFOA: Wonen/Industrie 7.0 µg/kg, Landbouw/Natuur 1.9 µg/kg
-  - GenX: Wonen/Industrie 3.0 µg/kg, Landbouw/Natuur 0.8 µg/kg
+  - GenX en overige PFAS: Wonen/Industrie 3.0 µg/kg, Landbouw/Natuur 1.4 µg/kg
   
   Antwoord UITSLUITEND met een geldig JSON object (GEEN markdown!):
   {
