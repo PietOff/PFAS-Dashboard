@@ -231,12 +231,25 @@ curl "https://<regio>-…/sweepBekendmakingenNow?vanaf=2019-01-01&max=200"
 ```
 
 Verwerkte documenten worden onthouden, dus roep dit gewoon herhaald aan tot
-`verwerkt: 0` — hij pakt op waar hij bleef. Daarna neemt de wekelijkse run het
+`volledig: true` — hij pakt op waar hij bleef. Daarna neemt de wekelijkse run het
 over.
 
 Het watermerk staat in `config/bekendmakingenSweep`. De sweep gebruikt dat in
 plaats van een vast venster van zeven dagen: als een run faalt of overgeslagen
 wordt, ontstaat er anders een gat dat nooit meer gedicht wordt.
+
+Het watermerk schuift alleen op na een **volledige** run: elke publicatie in het
+venster is verwerkt, al bekend, of opgegeven. Tot september 2026 schoof het ook
+op als de run bij `max` stopte of als er documenten mislukten, en dan kwamen
+die publicaties nooit meer aan de beurt. Een run stopt nu zelf na zeven minuten,
+zodat `herbouwAfwijkingen` altijd nog binnen de functietimeout draait. Een
+publicatie die drie runs achter elkaar mislukt wordt opgegeven (zie de collectie
+`sweepMislukt`), zodat één verdwenen document het watermerk niet voor altijd
+tegenhoudt. De audit meldt het als het watermerk meer dan drie weken achterloopt.
+
+`herbouwAfwijkingen` zet voor gemeenten zonder eigen publicatie ook de bronlink
+uit `gemeente_mapping.json`. Een gerepareerde link staat dus na de volgende sweep
+of `herbouw` in het dashboard, zonder `fixLinks` (die ook alle waarden terugzet).
 
 ### Juistheid: kloppen de getallen?
 

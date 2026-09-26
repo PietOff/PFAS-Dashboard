@@ -537,6 +537,130 @@ test('beoordeelAudit signaleert de stille storingen', () => {
 });
 
 // ------------------------------------------------------------------
+// Minimale nep-Firestore: genoeg voor sweepBekendmakingen.
+function nepDb(begin = {}) {
+  const data = JSON.parse(JSON.stringify(begin));
+  const col = (naam) => {
+    data[naam] = data[naam] || {};
+    const c = data[naam];
+    const doc = (id) => ({
+      id,
+      async get() { return { id, exists: id in c, data: () => c[id] }; },
+      async set(v, opt) { c[id] = opt && opt.merge ? { ...(c[id] || {}), ...v } : v; }
+    });
+    return {
+      doc,
+      async get() {
+        const docs = Object.keys(c).map(id => ({ id, data: () => c[id] }));
+        return { size: docs.length, forEach: (f) => docs.forEach(f) };
+      }
+    };
+  };
+  return { collection: col, _data: data };
+}
+
+const pub = (n) => ({ identifier: `gmb-2026-${n}`, gemeente: 'Haarlem', url: `https://x/${n}.html` });
+const sweepOpties = (records, verwerk, extra = {}) => ({
+  _zoek: async () => ({ records, totaal: records.length }),
+  _verwerk: verwerk,
+  _herbouw: async () => ({ afwijkend: 0 }),
+  ...extra
+});
+
+test('het watermerk schuift niet op als de sweep bij de limiet stopt', async () => {
+  const { sweepBekendmakingen } = require('../checkBekendmakingen');
+  const db = nepDb({ config: { bekendmakingenSweep: { laatsteGeslaagdeRun: '2026-01-01' } } });
+
+  const r = await sweepBekendmakingen(db, {
+    maxDocumenten: 1,
+    ...sweepOpties([pub(1), pub(2), pub(3)], async () => 'verwerkt')
+  });
+
+  // Dit was de fout: het watermerk ging naar gisteren, en pub 2 en 3 kwamen
+  // nooit meer aan de beurt omdat de volgende run pas daarna begon.
+  assert.strictEqual(r.volledig, false);
+  assert.strictEqual(r.gestopt, 'limiet');
+  assert.strictEqual(db._data.config.bekendmakingenSweep.laatsteGeslaagdeRun, '2026-01-01');
+});
+
+test('de sweep stopt op tijd en draait dan nog steeds herbouw', async () => {
+  const { sweepBekendmakingen } = require('../checkBekendmakingen');
+  const db = nepDb({ config: { bekendmakingenSweep: { laatsteGeslaagdeRun: '2026-01-01' } } });
+  let klok = 0;
+  let herbouwd = false;
+
+  const r = await sweepBekendmakingen(db, {
+    tijdsbudgetMs: 1000,
+    _nu: () => klok,
+    ...sweepOpties([pub(1), pub(2), pub(3)], async () => { klok += 600; return 'overgeslagen'; }),
+    _herbouw: async () => { herbouwd = true; return {}; }
+  });
+
+  assert.strictEqual(r.gestopt, 'tijd');
+  assert.ok(herbouwd, 'herbouwAfwijkingen moet ook na een afgebroken run draaien');
+  assert.strictEqual(db._data.config.bekendmakingenSweep.laatsteGeslaagdeRun, '2026-01-01');
+});
+
+test('een mislukte publicatie houdt het watermerk tegen tot ze is opgegeven', async () => {
+  const { sweepBekendmakingen, MAX_POGINGEN } = require('../checkBekendmakingen');
+  const db = nepDb({ config: { bekendmakingenSweep: { laatsteGeslaagdeRun: '2026-01-01' } } });
+  const opties = sweepOpties([pub(1), pub(2)], async (_db, p) =>
+    p.identifier.endsWith('-2') ? 'mislukt' : 'overgeslagen');
+
+  for (let i = 0; i < MAX_POGINGEN; i++) {
+    const r = await sweepBekendmakingen(db, opties);
+    assert.strictEqual(r.volledig, false, `poging ${i + 1} mag het watermerk niet verzetten`);
+    assert.strictEqual(db._data.config.bekendmakingenSweep.laatsteGeslaagdeRun, '2026-01-01');
+  }
+
+  // Na MAX_POGINGEN keer is het een verloren zaak, en die mag de rest niet
+  // voor altijd tegenhouden.
+  const r = await sweepBekendmakingen(db, opties);
+  assert.strictEqual(r.opgegeven, 1);
+  assert.strictEqual(r.volledig, true);
+  assert.notStrictEqual(db._data.config.bekendmakingenSweep.laatsteGeslaagdeRun, '2026-01-01');
+});
+
+test('een volledige sweep verzet het watermerk naar gisteren', async () => {
+  const { sweepBekendmakingen } = require('../checkBekendmakingen');
+  const db = nepDb({ config: { bekendmakingenSweep: { laatsteGeslaagdeRun: '2026-01-01' } } });
+  const nu = Date.parse('2026-09-28T03:00:00Z');
+
+  const r = await sweepBekendmakingen(db, {
+    _nu: () => nu,
+    ...sweepOpties([pub(1)], async () => 'overgeslagen')
+  });
+  assert.strictEqual(r.volledig, true);
+  assert.strictEqual(db._data.config.bekendmakingenSweep.laatsteGeslaagdeRun, '2026-09-27');
+});
+
+test('een handmatige sweep vanaf na het watermerk slaat het gat niet over', async () => {
+  const { sweepBekendmakingen } = require('../checkBekendmakingen');
+  const db = nepDb({ config: { bekendmakingenSweep: { laatsteGeslaagdeRun: '2026-01-01' } } });
+
+  await sweepBekendmakingen(db, { vanaf: '2026-06-01', ...sweepOpties([pub(1)], async () => 'overgeslagen') });
+  assert.strictEqual(db._data.config.bekendmakingenSweep.laatsteGeslaagdeRun, '2026-01-01');
+});
+
+test('herbouw zet de bronlink uit gemeente_mapping bij een aanname', () => {
+  const { bronLinkUitMapping } = require('../checkBekendmakingen');
+  const mapping = require('../gemeente_mapping.json');
+  assert.strictEqual(bronLinkUitMapping('haarlem'), mapping.Haarlem);
+  assert.strictEqual(bronLinkUitMapping('Bestaat Niet'), null);
+});
+
+test('beoordeelAudit meldt een watermerk dat achterblijft', () => {
+  const { beoordeelAudit } = require('../audit');
+  const basis = { ontbrekend: 0, verweesd: 0, dubbeleIds: 0, verdachteWaarden: 0,
+    zwakkeBronlinks: 0, dekkingProcent: 100, sweepDagenGeleden: 2 };
+
+  assert.strictEqual(beoordeelAudit({ samenvatting: { ...basis, watermerkDagenOud: 8 } }).gezond, true);
+  const achter = beoordeelAudit({ samenvatting: { ...basis, watermerkDagenOud: 60 } });
+  assert.strictEqual(achter.gezond, false);
+  assert.ok(/achter/.test(achter.problemen[0]));
+});
+
+// ------------------------------------------------------------------
 test('de CI-workflows draaien de tests en de linkcheck', () => {
   const repo = path.join(wortel, '..');
   const ci = fs.readFileSync(path.join(repo, '.github/workflows/ci.yml'), 'utf8');

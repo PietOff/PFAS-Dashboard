@@ -108,6 +108,13 @@ async function verzamelAudit(db, { maxDagenOud = 90 } = {}) {
     ? Math.floor((vandaag - new Date(sweep.laatsteRunOp)) / 86400000)
     : null;
 
+  // Het watermerk schuift alleen op na een volledige run. Blijft het achter
+  // terwijl de sweep wel draait, dan loopt er een achterstand of faalt er elke
+  // week iets — dat ziet sweepDagenGeleden niet.
+  const watermerkDagenOud = sweep && sweep.laatsteGeslaagdeRun
+    ? Math.floor((vandaag - new Date(sweep.laatsteGeslaagdeRun)) / 86400000)
+    : null;
+
   return {
     tijdstip: new Date().toISOString(),
     samenvatting: {
@@ -122,7 +129,9 @@ async function verzamelAudit(db, { maxDagenOud = 90 } = {}) {
       verouderd: verouderd.length,
       metAfwijkendBeleid: afwijkendBeleid,
       teReviewen,
-      sweepDagenGeleden
+      sweepDagenGeleden,
+      watermerkDagenOud,
+      sweepVolledig: sweep && sweep.laatsteResultaat ? sweep.laatsteResultaat.volledig !== false : null
     },
     bron: lijst.bron,
     bronWaarschuwingen: lijst.waarschuwingen,
@@ -145,7 +154,7 @@ async function verzamelAudit(db, { maxDagenOud = 90 } = {}) {
  *
  * @returns {{gezond: boolean, problemen: string[]}}
  */
-function beoordeelAudit(rapport, { maxSweepDagen = 10 } = {}) {
+function beoordeelAudit(rapport, { maxSweepDagen = 10, maxWatermerkDagen = 21 } = {}) {
   const s = rapport.samenvatting;
   const problemen = [];
 
@@ -168,6 +177,10 @@ function beoordeelAudit(rapport, { maxSweepDagen = 10 } = {}) {
     problemen.push('De bekendmakingen-sweep heeft nog nooit gedraaid.');
   } else if (s.sweepDagenGeleden > maxSweepDagen) {
     problemen.push(`De sweep draaide ${s.sweepDagenGeleden} dagen geleden voor het laatst.`);
+  }
+  if (typeof s.watermerkDagenOud === 'number' && s.watermerkDagenOud > maxWatermerkDagen) {
+    problemen.push(`De sweep loopt achter: het watermerk staat ${s.watermerkDagenOud} dagen terug. ` +
+      'Er is een achterstand of er faalt elke run een publicatie (zie config/bekendmakingenSweep en sweepMislukt).');
   }
   if (rapport.bronWaarschuwingen && rapport.bronWaarschuwingen.length) {
     problemen.push(`Gemeentelijst: ${rapport.bronWaarschuwingen.join(' | ')}`);
