@@ -24,6 +24,7 @@
  */
 
 const axios = require('axios');
+const cheerio = require('cheerio');
 const mapping = require('./gemeente_mapping.json');
 
 const alleenKapot = process.argv.includes('--kapot');
@@ -78,6 +79,42 @@ async function checkMetHerkansing(url) {
   return isTijdelijk(tweede) ? { ...tweede, eersteFout: eerste.fout || eerste.status } : tweede;
 }
 
+// Bij een kapotte link: welke pagina's over bodem noemt de site zelf nog? Een
+// omgevingsdienst die zijn site omgooit laat de homepage bijna altijd staan,
+// en daar staat het nieuwe adres. Zonder dit is de vervanger raden, en een
+// zoekmachine-index loopt vaak weken achter.
+const SUGGESTIE_WOORDEN = /bodem|grond|pfas/i;
+
+async function zoekVervangers(url) {
+  let basis;
+  try { basis = new URL(url).origin + '/'; } catch { return []; }
+  try {
+    const r = await axios.get(basis, {
+      timeout: 20000,
+      maxRedirects: 5,
+      responseType: 'text',
+      transformResponse: [(d) => d],
+      validateStatus: () => true,
+      headers: { 'User-Agent': UA, 'Accept': 'text/html', 'Accept-Language': 'nl,en;q=0.8' }
+    });
+    if (r.status >= 400) return [];
+    const $ = cheerio.load(String(r.data));
+    const gevonden = new Set();
+    $('a[href]').each((_, a) => {
+      const href = $(a).attr('href');
+      const tekst = $(a).text().replace(/\s+/g, ' ').trim();
+      if (!SUGGESTIE_WOORDEN.test(href) && !SUGGESTIE_WOORDEN.test(tekst)) return;
+      try {
+        const abs = new URL(href, basis);
+        if (abs.origin === new URL(basis).origin && abs.href !== url) gevonden.add(abs.href);
+      } catch { /* ongeldige href */ }
+    });
+    return [...gevonden].slice(0, 10);
+  } catch {
+    return [];
+  }
+}
+
 function oordeel(r) {
   if (r.status >= 200 && r.status < 400) return 'ok';
   if (GEBLOKKEERD.has(r.status)) return 'geblokkeerd';
@@ -114,6 +151,7 @@ async function main() {
   }
 
   const kapot = resultaten.filter(r => r.oordeel === 'kapot');
+  for (const k of kapot) k.suggesties = await zoekVervangers(k.url);
   const geblokkeerd = resultaten.filter(r => r.oordeel === 'geblokkeerd');
   const ok = resultaten.filter(r => r.oordeel === 'ok');
   const gemeentenKapot = kapot.reduce((n, r) => n + r.gemeenten.length, 0);
@@ -146,6 +184,10 @@ async function main() {
     for (const k of kapot) {
       console.error(`  ${k.status || k.fout}  ${k.url}`);
       console.error(`      ${k.gemeenten.join(', ')}`);
+      if (k.suggesties && k.suggesties.length) {
+        console.error('      Bodempagina\'s die de homepage nu noemt:');
+        for (const u of k.suggesties) console.error(`        → ${u}`);
+      }
     }
   }
 
