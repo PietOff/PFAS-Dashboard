@@ -11,6 +11,9 @@
  *   GEBLOKKEERD 403/405/429 — de site weert geautomatiseerd verkeer. Zegt niets
  *               over of de pagina bestaat, dus dit laat de check NIET falen.
  *
+ * Netwerkfouten en 5xx krijgen eerst één herkansing; pas als die ook faalt
+ * telt de link als KAPOT.
+ *
  * Alleen KAPOT geeft exitcode 1. Anders zou elke gemeente met een bot-filter
  * de controle rood maken en werd hij binnen een maand genegeerd.
  *
@@ -61,6 +64,20 @@ async function checkUrl(url) {
   return laatste || { status: 0, fout: 'onbekend' };
 }
 
+// Een DNS-hapering (EAI_AGAIN), een time-out of een 5xx zegt iets over dit
+// moment, niet over de pagina. Eén herkansing na een pauze voorkomt dat de
+// wekelijkse controle rood wordt van een storing die een minuut duurde.
+const HERKANSING_NA_MS = 15000;
+const isTijdelijk = (r) => r.status === 0 || (r.status >= 500 && !GEBLOKKEERD.has(r.status));
+
+async function checkMetHerkansing(url) {
+  const eerste = await checkUrl(url);
+  if (!isTijdelijk(eerste)) return eerste;
+  await new Promise(res => setTimeout(res, HERKANSING_NA_MS));
+  const tweede = await checkUrl(url);
+  return isTijdelijk(tweede) ? { ...tweede, eersteFout: eerste.fout || eerste.status } : tweede;
+}
+
 function oordeel(r) {
   if (r.status >= 200 && r.status < 400) return 'ok';
   if (GEBLOKKEERD.has(r.status)) return 'geblokkeerd';
@@ -82,7 +99,7 @@ async function main() {
   for (let i = 0; i < urls.length; i += GELIJKTIJDIG) {
     const groep = urls.slice(i, i + GELIJKTIJDIG);
     const uit = await Promise.all(groep.map(async url => {
-      const r = await checkUrl(url);
+      const r = await checkMetHerkansing(url);
       return { url, gemeenten: perUrl.get(url), oordeel: oordeel(r), ...r };
     }));
 

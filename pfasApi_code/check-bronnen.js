@@ -64,7 +64,12 @@ async function haal(url, { type = 'json', timeout = 30000 } = {}) {
  * anders zou deze controle wekelijks vals alarm slaan en binnen een maand
  * genegeerd worden.
  */
-async function sruProbe(query, { pogingen = 3, basis = SRU_IN_GEBRUIK, versie = '1.2' } = {}) {
+// Wachttijd vóór de 2e, 3e en 4e poging. Samen bijna een minuut: een korte
+// storing bij KOOP (zoals de 503 van 21 september 2026, terwijl het twee weken
+// eerder gewoon werkte) is daarmee overbrugd.
+const SRU_WACHTTIJDEN_MS = [5000, 15000, 30000];
+
+async function sruProbe(query, { pogingen = SRU_WACHTTIJDEN_MS.length + 1, basis = SRU_IN_GEBRUIK, versie = '1.2' } = {}) {
   const url = `${basis}?version=${versie}&operation=searchRetrieve&x-connection=oep` +
     `&startRecord=1&maximumRecords=1&query=${encodeURIComponent(query)}`;
 
@@ -76,13 +81,18 @@ async function sruProbe(query, { pogingen = 3, basis = SRU_IN_GEBRUIK, versie = 
       r = await haal(url, { type: 'text' });
     } catch (err) {
       laatste = `niet bereikbaar (${err.code || err.message})`;
+      if (poging < pogingen) {
+        await new Promise(res => setTimeout(res, SRU_WACHTTIJDEN_MS[poging - 1] || 30000));
+      }
       continue;
     }
 
     if (r.status >= 500) {
       laatste = `HTTP ${r.status}`;
       // Even wachten; een overbelaste index herstelt vaak binnen seconden.
-      await new Promise(res => setTimeout(res, 2000 * poging));
+      if (poging < pogingen) {
+        await new Promise(res => setTimeout(res, SRU_WACHTTIJDEN_MS[poging - 1] || 30000));
+      }
       continue;
     }
     if (r.status !== 200) return { ok: false, fout: `HTTP ${r.status}` };
