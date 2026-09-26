@@ -12,6 +12,48 @@
 
 const { toDocId } = require('./docId');
 const { haalGemeenteLijst } = require('./gemeentelijst');
+const pfasNormen = require('./pfas_normen.json');
+
+const STOFFEN = ['pfos', 'pfoa', 'genx'];
+const KLASSEN = ['wonen', 'industrie', 'landbouwNatuur'];
+const CURATIE = new Map(Object.entries(pfasNormen.afwijkend || {}).map(([n, d]) => [toDocId(n), d]));
+
+/**
+ * Klopt wat het dashboard toont met wat de herkomst belooft?
+ *
+ * De bestaande controles kijken of een waarde tussen 0 en 50 ligt. Dat ving
+ * niet dat Rotterdam "PFOS industrie 3,0" toonde met de tekst "PFOS Industrie
+ * is 7.0" eronder, of dat het landelijk kader zelf verkeerd stond.
+ *
+ * @returns {string[]} - problemen voor deze gemeente, leeg als het klopt
+ */
+function controleerNormen(docId, data) {
+  if (data.handmatigeOverschrijving === true) return [];
+  const problemen = [];
+  const vergelijk = (verwacht, wat) => {
+    for (const stof of STOFFEN) {
+      for (const klasse of KLASSEN) {
+        const v = data[stof]?.[klasse];
+        const e = verwacht[stof]?.[klasse];
+        if ((typeof e === 'number' || e === null) && v !== e) {
+          problemen.push(`${stof}.${klasse} = ${v}, verwacht ${e} (${wat})`);
+        }
+      }
+    }
+  };
+
+  const curatie = CURATIE.get(docId);
+  if (curatie) {
+    if (data.herkomst !== 'curatie') {
+      problemen.push(`staat in pfas_normen.json als afwijkend, maar herkomst is '${data.herkomst}'`);
+    } else {
+      vergelijk(curatie, 'curatie');
+    }
+  } else if (data.herkomst === 'landelijk-kader-aanname' || data.herkomst === 'mogelijk-afwijkend') {
+    vergelijk(pfasNormen.landelijk_kader, 'landelijk kader');
+  }
+  return problemen;
+}
 
 async function verzamelAudit(db, { maxDagenOud = 90 } = {}) {
   const lijst = await haalGemeenteLijst();
@@ -24,6 +66,7 @@ async function verzamelAudit(db, { maxDagenOud = 90 } = {}) {
   const verdachteWaarden = [];
   const zwakkeBronnen = [];
   const verouderd = [];
+  const inconsistenteNormen = [];
   const herkomst = {};
   let afwijkendBeleid = 0;
   let teReviewen = 0;
@@ -42,6 +85,10 @@ async function verzamelAudit(db, { maxDagenOud = 90 } = {}) {
     if (data.tereviewen === true) teReviewen++;
     herkomst[data.herkomst || 'onbekend'] = (herkomst[data.herkomst || 'onbekend'] || 0) + 1;
 
+    for (const probleem of controleerNormen(doc.id, data)) {
+      inconsistenteNormen.push({ gemeente: naam, probleem });
+    }
+
     for (const stof of ['pfos', 'pfoa', 'genx']) {
       const w = data[stof];
       if (!w) {
@@ -50,6 +97,8 @@ async function verzamelAudit(db, { maxDagenOud = 90 } = {}) {
       }
       for (const klasse of ['wonen', 'industrie', 'landbouwNatuur']) {
         const v = w[klasse];
+        // "Per zone" is een bewuste lege waarde: één getal zou verzonnen zijn.
+        if (v === null && Array.isArray(data.perZone) && data.perZone.includes(`${stof}.${klasse}`)) continue;
         if (typeof v !== 'number' || !Number.isFinite(v)) {
           verdachteWaarden.push({ gemeente: naam, probleem: `${stof}.${klasse} is geen getal (${v})` });
         } else if (v <= 0 || v > 50) {
@@ -118,6 +167,7 @@ async function verzamelAudit(db, { maxDagenOud = 90 } = {}) {
       verweesd: verweesd.length,
       dubbeleIds: dubbeleIds.length,
       verdachteWaarden: verdachteWaarden.length,
+      inconsistenteNormen: inconsistenteNormen.length,
       zwakkeBronlinks: zwakkeBronnen.length,
       verouderd: verouderd.length,
       metAfwijkendBeleid: afwijkendBeleid,
@@ -131,6 +181,7 @@ async function verzamelAudit(db, { maxDagenOud = 90 } = {}) {
     verweesdeDocumenten: verweesd,
     dubbeleIds,
     verdachteWaarden,
+    inconsistenteNormen: inconsistenteNormen.slice(0, 100),
     zwakkeBronlinks: zwakkeBronnen,
     verouderdeDocumenten: verouderd.sort((a, b) => (b.dagenOud || 1e9) - (a.dagenOud || 1e9)).slice(0, 50)
   };
@@ -161,6 +212,9 @@ function beoordeelAudit(rapport, { maxSweepDagen = 10 } = {}) {
   if (s.verdachteWaarden > 0) {
     problemen.push(`${s.verdachteWaarden} PFAS-waarden zijn onaannemelijk of ontbreken.`);
   }
+  if (s.inconsistenteNormen > 0) {
+    problemen.push(`${s.inconsistenteNormen} getoonde normen kloppen niet met hun herkomst (curatie of landelijk kader).`);
+  }
   if (s.zwakkeBronlinks > 0) {
     problemen.push(`${s.zwakkeBronlinks} gemeenten hebben geen bruikbare bronlink.`);
   }
@@ -176,4 +230,4 @@ function beoordeelAudit(rapport, { maxSweepDagen = 10 } = {}) {
   return { gezond: problemen.length === 0, problemen };
 }
 
-module.exports = { verzamelAudit, beoordeelAudit };
+module.exports = { verzamelAudit, beoordeelAudit, controleerNormen };

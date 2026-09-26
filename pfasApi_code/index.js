@@ -27,7 +27,7 @@ const fallbackData = [
     provincie: "Zuid-Holland",
     pfoa: { wonen: 7.0, industrie: 7.0, landbouwNatuur: 1.9 },
     pfos: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 1.4 },
-    genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 0.8 },
+    genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 1.4 },
     laatstGeupdate: "2024-01-15",
     opmerkingen: "Volgt landelijk Handelingskader voor grondverzet. Kaarten en details via DCMR bodemloket.",
     bronLink: "https://www.dcmr.nl/pfas-in-de-bodem"
@@ -39,7 +39,7 @@ const fallbackData = [
     provincie: "Noord-Holland",
     pfoa: { wonen: 7.0, industrie: 7.0, landbouwNatuur: 1.9 },
     pfos: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 1.4 },
-    genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 0.8 },
+    genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 1.4 },
     laatstGeupdate: "2025-01-01",
     opmerkingen: "Nieuwe Bodemkwaliteitskaart in 2025 vastgesteld. Let op: alle PFAS gelden als ZZS.",
     bronLink: "https://odnzkg.nl/kaarten/pfas-bodemkwaliteitskaart/"
@@ -51,7 +51,7 @@ const fallbackData = [
     provincie: "Noord-Brabant",
     pfoa: { wonen: 7.0, industrie: 7.0, landbouwNatuur: 1.9 },
     pfos: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 1.4 },
-    genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 0.8 },
+    genx: { wonen: 3.0, industrie: 3.0, landbouwNatuur: 1.4 },
     laatstGeupdate: "2024-05-12",
     opmerkingen: "Volgt landelijk handelingskader (update dec 2023).",
     bronLink: "https://odbn.nl/expertises/bodem/pfas"
@@ -76,7 +76,7 @@ app.get(['/v1/gemeenten', '/api/v1/gemeenten'], async (req, res) => {
           "provincie": "Zuid-Holland",
           "pfoa": { "wonen": 7, "industrie": 7, "landbouwNatuur": 1.9 },
           "pfos": { "wonen": 3, "industrie": 3, "landbouwNatuur": 1.4 },
-          "genx": { "wonen": 3, "industrie": 3, "landbouwNatuur": 0.8 },
+          "genx": { "wonen": 3, "industrie": 3, "landbouwNatuur": 1.4 },
           "laatstGeupdate": "2024-01-15",
           "opmerkingen": "Volgt landelijk Handelingskader voor grondverzet.",
           "bronLink": "https://www.dcmr.nl/pfas-in-de-bodem"
@@ -88,7 +88,7 @@ app.get(['/v1/gemeenten', '/api/v1/gemeenten'], async (req, res) => {
           "provincie": "Noord-Holland",
           "pfoa": { "wonen": 7, "industrie": 7, "landbouwNatuur": 1.9 },
           "pfos": { "wonen": 3, "industrie": 3, "landbouwNatuur": 1.4 },
-          "genx": { "wonen": 3, "industrie": 3, "landbouwNatuur": 0.8 },
+          "genx": { "wonen": 3, "industrie": 3, "landbouwNatuur": 1.4 },
           "laatstGeupdate": "2025-10-06",
           "opmerkingen": "Bodemkwaliteitskaart Amsterdam (ACN) 2025 vastgesteld.",
           "bronLink": "https://odnzkg.nl/kaarten/pfas-bodemkwaliteitskaart/"
@@ -100,7 +100,7 @@ app.get(['/v1/gemeenten', '/api/v1/gemeenten'], async (req, res) => {
           "provincie": "Noord-Brabant",
           "pfoa": { "wonen": 7, "industrie": 7, "landbouwNatuur": 1.9 },
           "pfos": { "wonen": 3, "industrie": 3, "landbouwNatuur": 1.4 },
-          "genx": { "wonen": 3, "industrie": 3, "landbouwNatuur": 0.8 },
+          "genx": { "wonen": 3, "industrie": 3, "landbouwNatuur": 1.4 },
           "laatstGeupdate": "2024-05-12",
           "opmerkingen": "Volgt landelijk handelingskader.",
           "bronLink": "https://odbn.nl/expertises/bodem/pfas"
@@ -253,22 +253,23 @@ exports.herbouwAfwijkingenNow = functions
   });
 
 // ============================================================
-// NACHTELIJKE CHECK: Officiële Bekendmakingen (overheid.nl)
+// NACHTELIJKE SWEEP: Officiële Bekendmakingen (overheid.nl)
 // ============================================================
-// Draait elke nacht om 03:00.
-// Zoekt in de officiële Rijksoverheid API naar nieuwe gemeentebladen
-// over PFAS bodembeleid. Alleen als een bron 100% officieel is EN de
-// AI-extractie hoge zekerheid geeft, wordt de database automatisch
-// bijgewerkt. Alles wat twijfelachtig is wordt als signaal opgeslagen.
+// Draait elke nacht behalve maandag (dan draait de wekelijkse sweep al).
+//
+// Dit riep eerst checkOfficieleBekendmakingen aan, die AI-getallen rechtstreeks
+// in pfasData schreef. Dat was een tweede schrijver naast de sweep, buiten de
+// curatie en de herbouw om: wat de herbouw op maandag rechtzette, kon de nacht
+// erna weer overschreven worden. Nu loopt alles via hetzelfde pad: documenten
+// in het corpus, daarna de afgeleide toestand per gemeente.
 exports.nightlyBekendmakingen = functions
-  .runWith({ timeoutSeconds: 540, secrets: ["GEMINI_API_KEY"] })
+  .runWith({ timeoutSeconds: 540, memory: '512MB', secrets: ["GEMINI_API_KEY"] })
   .pubsub
-  .schedule('0 3 * * *')
+  .schedule('0 3 * * 0,2-6')
   .timeZone('Europe/Amsterdam')
-  .onRun(async (context) => {
-    console.log('🌙 Nachtelijke check Officiële Bekendmakingen gestart...');
-    const resultaten = await checkOfficieleBekendmakingen(db, 7);
-    console.log('🌙 Nachtelijke check afgerond:', JSON.stringify(resultaten));
+  .onRun(async () => {
+    const resultaat = await sweepBekendmakingen(db, { maxDocumenten: 40 });
+    console.log('🌙 Nachtelijke sweep afgerond:', JSON.stringify(resultaat));
     return null;
   });
 
@@ -331,7 +332,7 @@ exports.fillDefaultData = functions.runWith({ timeoutSeconds: 540 }).https.onReq
         omgevingsdienst: "Volgens landelijk kader",
         pfoa: { wonen: 7, industrie: 7, landbouwNatuur: 1.9 },
         pfos: { wonen: 3, industrie: 3, landbouwNatuur: 1.4 },
-        genx: { wonen: 3, industrie: 3, landbouwNatuur: 0.8 },
+        genx: { wonen: 3, industrie: 3, landbouwNatuur: 1.4 },
         heeftAfwijkendBeleid: false,
         laatstGeupdate: new Date().toISOString().split('T')[0],
         opmerkingen: "Geen specifiek lokaal beleid geüploaded; toont Tijdelijk Handelingskader PFAS (RIVM). Raadpleeg de regionale Omgevingsdienst voor actuele lokale regels.",
