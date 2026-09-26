@@ -279,6 +279,31 @@
 
   let records = [];
   let perId = new Map();
+
+  // De kaart en PDOK schrijven "Bergen (NH.)" en "Hengelo"; in de database
+  // staan "Bergen (NH)" en "Hengelo (O)". Met alleen toId() vinden die elkaar
+  // niet en staat de gemeente grijs op "Nog geen data", terwijl de normen er
+  // gewoon zijn. Eerst exact, dan zonder punten, dan zonder toevoeging tussen
+  // haakjes — dat laatste alleen als er maar één gemeente zo heet.
+  const zonderPunten = (n) => toId(String(n == null ? '' : n).replace(/\./g, ''));
+  const kaal = (n) => zonderPunten(String(n == null ? '' : n).replace(/\s*\([^)]*\)\s*$/, ''));
+  let perSleutel = new Map();
+  let perKaal = new Map();
+  function indexeerNamen() {
+    perSleutel = new Map();
+    const kalen = new Map();
+    for (const [id, r] of perId) {
+      for (const n of [r.gemeente, id]) perSleutel.set(zonderPunten(n), id);
+      const k = kaal(r.gemeente || id);
+      kalen.set(k, kalen.has(k) ? null : id);
+    }
+    perKaal = new Map([...kalen].filter(([, id]) => id));
+  }
+  function idVoorNaam(naam) {
+    const direct = toId(naam);
+    if (perId.has(direct)) return direct;
+    return perSleutel.get(zonderPunten(naam)) || perKaal.get(kaal(naam)) || direct;
+  }
   let paden = [];
   let tabAfwijkend = false;
 
@@ -429,7 +454,7 @@
       if (!naam || !f.geometry) continue;
       const d = padVan(f.geometry, pr);
       if (!d) continue;
-      const id = toId(naam);
+      const id = idVoorNaam(naam);
       const t = toestandVan(perId.get(id));
 
       const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -633,7 +658,7 @@
         uit.textContent = 'Geen locatie gevonden voor "' + q + '".';
         return;
       }
-      const id = toId(doc.gemeentenaam);
+      const id = idVoorNaam(doc.gemeentenaam);
       const rec = perId.get(id);
       uit.innerHTML = `${esc(doc.weergavenaam)} ligt in gemeente <strong>${esc(doc.gemeentenaam)}</strong>.` +
         (rec ? '' : ' Voor die gemeente staan nog geen normen in de database.');
@@ -673,6 +698,7 @@
       return;
     }
     perId = new Map(records.map(r => [r.id || toId(r.gemeente), r]));
+    indexeerNamen();
 
     tekenPillsEnLegenda();
     tekenTabel();
@@ -695,7 +721,9 @@
 
       const gevraagd = new URL(location.href).searchParams.get('gemeente');
       if (gevraagd) {
-        const pad = paden.find(p => p.dataset.id === gevraagd);
+        // Ook een met de hand getypte link als ?gemeente=hengelo moet werken.
+        const gid = idVoorNaam(gevraagd);
+        const pad = paden.find(p => p.dataset.id === gid);
         if (pad) { kies(pad.dataset.id, pad.dataset.naam); zoomNaar(pad); }
       }
     } catch (e) {

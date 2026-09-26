@@ -771,8 +771,25 @@ async function verwerkPublicatie(db, pub, { forceer = false } = {}) {
  *   'handmatig'               - handmatig overschreven via de Google Sheet
  */
 const gemeenteMapping = require('./gemeente_mapping.json');
-const mappingOpNaam = new Map(Object.entries(gemeenteMapping).map(([k, v]) => [k.toLowerCase().trim(), v]));
-const bronLinkUitMapping = (naam) => (naam ? mappingOpNaam.get(String(naam).toLowerCase().trim()) : null) || null;
+// In gemeente_mapping.json staat "Bergen (NH.)" en "Hengelo", in Firestore
+// "Bergen (NH)" en "Hengelo (O)". Eerst exact, dan zonder punten, dan zonder
+// toevoeging tussen haakjes — dat laatste alleen als die naam uniek is.
+// Dezelfde regels als idVoorNaam() in public/index.html.
+const zonderPunten = (n) => String(n).toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
+const kaleNaam = (n) => zonderPunten(String(n).replace(/\s*\([^)]*\)\s*$/, ''));
+const mappingOpNaam = new Map(Object.entries(gemeenteMapping).map(([k, v]) => [zonderPunten(k), v]));
+const mappingKaal = (() => {
+  const m = new Map();
+  for (const [k, v] of Object.entries(gemeenteMapping)) {
+    const kk = kaleNaam(k);
+    m.set(kk, m.has(kk) ? null : v);
+  }
+  return m;
+})();
+const bronLinkUitMapping = (naam) => {
+  if (!naam) return null;
+  return mappingOpNaam.get(zonderPunten(naam)) || mappingKaal.get(kaleNaam(naam)) || null;
+};
 
 async function herbouwAfwijkingen(db) {
   const docs = await db.collection('pfasDocumenten').get();

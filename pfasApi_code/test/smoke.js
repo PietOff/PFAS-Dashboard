@@ -647,6 +647,11 @@ test('herbouw zet de bronlink uit gemeente_mapping bij een aanname', () => {
   const mapping = require('../gemeente_mapping.json');
   assert.strictEqual(bronLinkUitMapping('haarlem'), mapping.Haarlem);
   assert.strictEqual(bronLinkUitMapping('Bestaat Niet'), null);
+  // Firestore spelt deze anders dan de mapping en de kaart.
+  assert.strictEqual(bronLinkUitMapping('Bergen (NH)'), mapping['Bergen (NH.)']);
+  assert.strictEqual(bronLinkUitMapping('Bergen (L)'), mapping['Bergen (L.)']);
+  assert.strictEqual(bronLinkUitMapping('Hengelo (O)'), mapping.Hengelo);
+  assert.notStrictEqual(mapping['Bergen (NH.)'], mapping['Bergen (L.)']);
 });
 
 test('beoordeelAudit meldt een watermerk dat achterblijft', () => {
