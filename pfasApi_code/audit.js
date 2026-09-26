@@ -35,7 +35,7 @@ function controleerNormen(docId, data) {
       for (const klasse of KLASSEN) {
         const v = data[stof]?.[klasse];
         const e = verwacht[stof]?.[klasse];
-        if (typeof e === 'number' && v !== e) {
+        if ((typeof e === 'number' || e === null) && v !== e) {
           problemen.push(`${stof}.${klasse} = ${v}, verwacht ${e} (${wat})`);
         }
       }
@@ -97,6 +97,8 @@ async function verzamelAudit(db, { maxDagenOud = 90 } = {}) {
       }
       for (const klasse of ['wonen', 'industrie', 'landbouwNatuur']) {
         const v = w[klasse];
+        // "Per zone" is een bewuste lege waarde: één getal zou verzonnen zijn.
+        if (v === null && Array.isArray(data.perZone) && data.perZone.includes(`${stof}.${klasse}`)) continue;
         if (typeof v !== 'number' || !Number.isFinite(v)) {
           verdachteWaarden.push({ gemeente: naam, probleem: `${stof}.${klasse} is geen getal (${v})` });
         } else if (v <= 0 || v > 50) {

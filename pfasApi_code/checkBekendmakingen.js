@@ -210,10 +210,68 @@ async function zoekRecenteBekendmakingen(dagenTerug = 7) {
 const LANDELIJK = pfasNormen.landelijk_kader;
 
 // Handmatig geverifieerde afwijkingen uit pfas_normen.json, op document-id.
-// Die zijn leidend boven wat de AI uit een gemeenteblad haalt.
+// Alleen deze getallen komen als "afwijkend" in het dashboard: elk ervan is
+// nagelezen in het besluit dat in bronDocument staat.
 const CURATIE = new Map(
   Object.entries(pfasNormen.afwijkend || {}).map(([naam, data]) => [toDocId(naam), { naam, ...data }])
 );
+
+// Gemeenten waar wél lokaal PFAS-beleid bestaat of voorbereid is, maar waar de
+// vaststelling niet is gevonden. Die tonen het landelijk kader mét waarschuwing.
+const MOGELIJK = new Map(
+  Object.entries(pfasNormen.mogelijkAfwijkend || {}).map(([naam, data]) => [toDocId(naam), { naam, ...data }])
+);
+
+// Documenten die een mens heeft nagelezen en die geen afwijking bevatten. Een
+// AI-signaal uit zo'n document wordt genegeerd, anders komt het elke week terug.
+const NAGELEZEN_ZONDER_AFWIJKING = new Set(Object.keys(pfasNormen.nagelezenZonderAfwijking || {}));
+
+// Provincie en CBS-code uit PDOK Bestuurlijke Gebieden (Kadaster).
+const GEBIED = new Map(
+  Object.entries(require('./gemeente_provincie.json')).map(([naam, d]) => [toDocId(naam), d])
+);
+
+// De omgevingsdienst volgt uit het domein van de (gecontroleerde) bronlink in
+// gemeente_mapping.json. Voor Noord- en Midden-Limburg verwijst de mapping naar
+// de gemeente zelf of de Limburgse BKK-viewer; die gemeenten vallen onder de
+// RUD Limburg-Noord.
+const OMGEVINGSDIENST_PER_DOMEIN = {
+  'odu.nl': 'Omgevingsdienst Utrecht',
+  'omwb.nl': 'Omgevingsdienst Midden- en West-Brabant',
+  'odzob.nl': 'Omgevingsdienst Zuidoost-Brabant',
+  'fumo.nl': 'FUMO (Omgevingsdienst Fryslân)',
+  'odgroenemetropool.nl': 'Omgevingsdienst Groene Metropool',
+  'odnhn.nl': 'Omgevingsdienst Noord-Holland Noord',
+  'odzuidlimburg.nl': 'Omgevingsdienst Zuid-Limburg',
+  'omgevingsdiensthaaglanden.nl': 'Omgevingsdienst Haaglanden',
+  'dcmr.nl': 'DCMR Milieudienst Rijnmond',
+  'odtwente.nl': 'Omgevingsdienst Twente',
+  'odijmond.nl': 'Omgevingsdienst IJmond',
+  'odveluwe.nl': 'Omgevingsdienst Veluwe IJssel',
+  'rud-zeeland.nl': 'RUD Zeeland',
+  'oddrenthe.nl': 'Omgevingsdienst Drenthe',
+  'ofgv.nl': 'Omgevingsdienst Flevoland & Gooi en Vechtstreek',
+  'odijsselland.nl': 'Omgevingsdienst IJsselland',
+  'ozhz.nl': 'Omgevingsdienst Zuid-Holland Zuid',
+  'odbn.nl': 'Omgevingsdienst Brabant Noord',
+  'od-groningen.nl': 'Omgevingsdienst Groningen',
+  'odwh.nl': 'Omgevingsdienst West-Holland',
+  'odachterhoek.nl': 'Omgevingsdienst Achterhoek',
+  'odnzkg.nl': 'Omgevingsdienst Noordzeekanaalgebied',
+  'odrivierenland.nl': 'Omgevingsdienst Rivierenland',
+  'oddevallei.nl': 'Omgevingsdienst de Vallei',
+  'odmh.nl': 'Omgevingsdienst Midden-Holland'
+};
+const LIMBURG_NOORD = /geowebonline\.nl|(bergen|echt-susteren|gennep|horstaandemaas|leudal|mookenmiddelaar|nederweert|roermond|venlo|venray|weert)\.nl$/;
+
+function omgevingsdienstVan(url) {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    if (OMGEVINGSDIENST_PER_DOMEIN[host]) return OMGEVINGSDIENST_PER_DOMEIN[host];
+    if (LIMBURG_NOORD.test(host)) return 'RUD Limburg-Noord';
+  } catch { /* geen geldige URL */ }
+  return null;
+}
 
 // Een ontwerpbesluit stelt nog niets vast. Almere stond zo op "afwijkend
 // beleid" op basis van een ontwerp-omgevingsplan.
@@ -757,35 +815,55 @@ function herbeoordeelDocument(data) {
  * Leidt de toestand van één gemeente af. Puur: geen Firestore, zodat het
  * zonder credentials te testen is.
  *
- * Volgorde van gezag:
- *   1. curatie uit pfas_normen.json (handmatig geverifieerd)
- *   2. een vastgesteld gemeenteblad met hoge AI-zekerheid
- *   3. een gevonden maar onzekere afwijking  → mogelijk-afwijkend
- *   4. niets gevonden                        → landelijk-kader-aanname
+ * Alleen nagelezen getallen komen in het dashboard. Volgorde:
+ *   1. curatie uit pfas_normen.json  → afwijkende normen, met bronbesluit
+ *   2. mogelijkAfwijkend (handmatig)  → landelijk kader + waarschuwing
+ *   3. een AI-vondst in een besluit   → landelijk kader + waarschuwing
+ *   4. niets gevonden                 → landelijk-kader-aanname
+ *
+ * De AI levert dus signalen, geen getallen. Van de elf gemeenten die de AI
+ * zelfstandig op "afwijkend" had gezet, klopte bij nalezing geen enkel getal
+ * zoals het getoond werd; twee hadden wél een echte afwijking, maar met andere
+ * voorwaarden dan de AI las.
  *
  * Elke tak schrijft ALLE velden die een andere tak zet, zodat er geen restant
- * van een vorige toestand blijft staan (tekst "PFOS industrie 7,0" onder een
- * tabel met 3,0, of een bronDocument bij een gemeente zonder document).
+ * van een vorige toestand blijft staan.
  */
-function leidGemeenteAf({ bron, curatie, bronLinkStandaard, vandaag }) {
-  const leeg = {
+function leidGemeenteAf({ docId, bron, curatie, mogelijk, bronLinkStandaard, vandaag }) {
+  const gebied = (docId && GEBIED.get(docId)) || {};
+  const basis = {
     bronDocument: null,
     bronDocumentTitel: null,
     bronDocumentDatum: null,
     mogelijkeWaarden: null,
+    perZone: null,
+    regio: null,
+    geverifieerdOp: null,
+    provincie: gebied.provincie || null,
+    cbsCode: gebied.cbsCode || null,
+    omgevingsdienst: omgevingsdienstVan(bronLinkStandaard),
     laatstGecontroleerd: vandaag
   };
+  const kader = () => ({ pfos: { ...LANDELIJK.pfos }, pfoa: { ...LANDELIJK.pfoa }, genx: { ...LANDELIJK.genx } });
+  const docLink = (id) => !id ? null : /^https?:/.test(id) ? id : `https://zoek.officielebekendmakingen.nl/${id}.html`;
 
   if (curatie) {
     return {
-      ...leeg,
+      ...basis,
       heeftAfwijkendBeleid: true,
       herkomst: 'curatie',
       tereviewen: false,
       bronType: 'curatie',
-      bronLink: curatie.bronLink || bronLinkStandaard || null,
-      omgevingsdienst: curatie.omgevingsdienst || null,
+      bronLink: curatie.bronLink || bronLinkStandaard || docLink(curatie.bronDocument),
+      bronDocument: curatie.bronDocument || null,
+      bronDocumentLink: docLink(curatie.bronDocument),
+      bronDocumentTitel: curatie.bronDocumentTitel || null,
+      bronDocumentDatum: curatie.bronDocumentDatum || null,
+      omgevingsdienst: curatie.omgevingsdienst || basis.omgevingsdienst,
       opmerkingen: curatie.opmerkingen || null,
+      perZone: curatie.perZone || null,
+      regio: curatie.regio || null,
+      geverifieerdOp: curatie.geverifieerdOp || null,
       confidenceScore: 100,
       pfos: { ...LANDELIJK.pfos, ...curatie.pfos },
       pfoa: { ...LANDELIJK.pfoa, ...curatie.pfoa },
@@ -793,66 +871,47 @@ function leidGemeenteAf({ bron, curatie, bronLinkStandaard, vandaag }) {
     };
   }
 
-  if (bron && bron.zeker) {
-    const update = {
-      ...leeg,
-      heeftAfwijkendBeleid: true,
-      herkomst: 'officiele-bekendmaking',
-      tereviewen: false,
-      bronLink: bron.url,
-      bronType: 'officielebekendmakingen.nl',
-      bronDocument: bron.identifier,
-      bronDocumentTitel: bron.titel,
-      bronDocumentDatum: bron.publicatieDatum,
-      opmerkingen: `Afwijkend beleid vastgesteld per ${bron.publicatieDatum}. Bron: ${bron.titel} (${bron.identifier}).`,
-      confidenceScore: 100
-    };
-    // Basis is het landelijk kader, niet wat er al stond: dat kan een
-    // restant zijn van een eerdere, verkeerde afleiding.
-    for (const stof of ['pfos', 'pfoa', 'genx']) {
-      update[stof] = mergeStofWaarden(bron.waarden?.[stof], LANDELIJK[stof]) || { ...LANDELIJK[stof] };
-    }
-    return update;
-  }
-
-  if (bron) {
-    // Wel een afwijking gevonden, maar onzeker of uit een ontwerp. Geen
-    // getallen overnemen — wel zichtbaar maken dat hier iets ligt.
+  if (mogelijk || bron) {
+    const vanAi = !mogelijk;
+    const titel = vanAi ? bron.titel : mogelijk.bronDocumentTitel;
+    const id = vanAi ? bron.identifier : mogelijk.bronDocument;
     return {
-      ...leeg,
+      ...basis,
+      ...kader(),
       heeftAfwijkendBeleid: false,
       herkomst: 'mogelijk-afwijkend',
       tereviewen: true,
-      bronLink: bron.url,
-      bronType: 'officielebekendmakingen.nl',
-      bronDocument: bron.identifier,
-      bronDocumentTitel: bron.titel,
-      bronDocumentDatum: bron.publicatieDatum,
-      mogelijkeWaarden: bron.waarden || null,
-      opmerkingen: `Mogelijk afwijkend beleid gevonden in ${bron.titel} (${bron.identifier}), ` +
-        `nog niet geverifieerd${isOntwerp(bron.titel) ? ' (ontwerpbesluit, nog niet vastgesteld)' : ''}. ` +
-        `Het dashboard toont het landelijk kader; raadpleeg het besluit en de omgevingsdienst voordat u hierop vertrouwt.`,
-      confidenceScore: 50,
-      pfos: { ...LANDELIJK.pfos },
-      pfoa: { ...LANDELIJK.pfoa },
-      genx: { ...LANDELIJK.genx }
+      bronType: vanAi ? 'officielebekendmakingen.nl' : 'curatie',
+      bronLink: bronLinkStandaard || docLink(id),
+      bronDocument: id || null,
+      bronDocumentLink: vanAi ? bron.url : docLink(id),
+      bronDocumentTitel: titel || null,
+      bronDocumentDatum: (vanAi ? bron.publicatieDatum : mogelijk.bronDocumentDatum) || null,
+      mogelijkeWaarden: vanAi ? (bron.waarden || null) : null,
+      geverifieerdOp: vanAi ? null : (mogelijk.geverifieerdOp || null),
+      opmerkingen: vanAi
+        ? `In ${titel} (${id}) staan mogelijk afwijkende PFAS-normen` +
+          `${isOntwerp(titel) ? ' (ontwerpbesluit, nog niet vastgesteld)' : ''}. ` +
+          `Dat is automatisch gesignaleerd en nog niet nagelezen. Het dashboard toont het landelijk kader; ` +
+          `raadpleeg het besluit en de omgevingsdienst voordat u hierop vertrouwt.`
+        : mogelijk.opmerkingen,
+      confidenceScore: 50
     };
   }
 
-  // Geen officieel document gevonden. Dat is een AANNAME, geen vaststelling,
-  // en moet als zodanig in het dashboard herkenbaar zijn.
+  // Geen besluit gevonden. Dat is een AANNAME, geen vaststelling.
   return {
-    ...leeg,
+    ...basis,
+    ...kader(),
     heeftAfwijkendBeleid: false,
     herkomst: 'landelijk-kader-aanname',
     tereviewen: false,
     bronType: null,
     bronLink: bronLinkStandaard || null,
-    opmerkingen: LANDELIJK.opmerkingen,
-    confidenceScore: 100,
-    pfos: { ...LANDELIJK.pfos },
-    pfoa: { ...LANDELIJK.pfoa },
-    genx: { ...LANDELIJK.genx }
+    bronDocumentLink: null,
+    opmerkingen: 'Er is geen vastgesteld afwijkend PFAS-beleid gevonden; het landelijk Handelingskader PFAS ' +
+      '(versie december 2023) is aangenomen. Dat is geen vaststelling: controleer bij de omgevingsdienst.',
+    confidenceScore: 100
   };
 }
 
@@ -881,6 +940,7 @@ async function herbouwAfwijkingen(db) {
   docs.forEach(d => {
     const data = d.data();
     if (!data.gemeenteId) return;
+    if (NAGELEZEN_ZONDER_AFWIJKING.has(data.identifier)) return;
     const oordeel = herbeoordeelDocument(data);
     if (!oordeel.afwijkend) return;
 
@@ -900,7 +960,7 @@ async function herbouwAfwijkingen(db) {
   const pfasData = await db.collection('pfasData').get();
   const vandaag = new Date().toISOString().split('T')[0];
   const updates = [];
-  const telling = { curatie: 0, afwijkend: 0, teReviewen: 0, aanname: 0 };
+  const telling = { curatie: 0, teReviewen: 0, aanname: 0 };
 
   pfasData.forEach(doc => {
     const bestaand = doc.data();
@@ -912,14 +972,15 @@ async function herbouwAfwijkingen(db) {
     const bronLinkStandaard = standaardLink.get(doc.id) || (oudeLinkIsDocument ? null : bestaand.bronLink);
 
     const data = leidGemeenteAf({
+      docId: doc.id,
       bron: perGemeente.get(doc.id),
       curatie: CURATIE.get(doc.id),
+      mogelijk: MOGELIJK.get(doc.id),
       bronLinkStandaard,
       vandaag
     });
 
     if (data.herkomst === 'curatie') telling.curatie++;
-    else if (data.herkomst === 'officiele-bekendmaking') telling.afwijkend++;
     else if (data.herkomst === 'mogelijk-afwijkend') telling.teReviewen++;
     else telling.aanname++;
 
@@ -1016,6 +1077,7 @@ module.exports = {
   herbeoordeelDocument,
   leidGemeenteAf,
   isOntwerp,
+  omgevingsdienstVan,
   wijktAfVanLandelijkKader,
   haalDocumentTekst,
   haalPagina,

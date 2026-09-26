@@ -377,13 +377,21 @@ test('gemeenten staan bij de omgevingsdienst die hun beleid maakt', () => {
   const deelnemers = {
     'odnzkg.nl': ['Aalsmeer', 'Amstelveen', 'Amsterdam', 'Diemen', 'Haarlemmermeer',
       'Ouder-Amstel', 'Uithoorn', 'Zaanstad'],
-    'odnhn.nl': ['Alkmaar', 'Bergen (NH.)', 'Castricum', 'Den Helder', 'Dijk en Waard',
+    'odnhn.nl': ['Alkmaar', 'Bergen (NH)', 'Castricum', 'Den Helder', 'Dijk en Waard',
       'Drechterland', 'Enkhuizen', 'Heiloo', 'Hollands Kroon', 'Hoorn', 'Koggenland',
       'Medemblik', 'Opmeer', 'Schagen', 'Stede Broec', 'Texel'],
     'odijmond.nl': ['Beverwijk', 'Bloemendaal', 'Edam-Volendam', 'Haarlem', 'Heemskerk',
       'Heemstede', 'Landsmeer', 'Oostzaan', 'Purmerend', 'Uitgeest', 'Velsen',
       'Waterland', 'Wormerland', 'Zandvoort'],
-    'oddevallei.nl': ['Barneveld', 'Ede', 'Nijkerk', 'Scherpenzeel', 'Wageningen']
+    'oddevallei.nl': ['Barneveld', 'Ede', 'Nijkerk', 'Scherpenzeel', 'Wageningen'],
+    // ODMH bestaat nog; deze zes stonden bij Haaglanden, dat alleen de
+    // Haaglanden-gemeenten bedient. Bron: de gezamenlijke beleidsregels en
+    // BKK PFAS Midden-Holland (o.a. gmb-2022-446229).
+    'odmh.nl': ['Alphen aan den Rijn', 'Bodegraven-Reeuwijk', 'Gouda', 'Krimpenerwaard',
+      'Waddinxveen', 'Zuidplas'],
+    // Bodembeheergebied volgens de Nota bodembeheer 2023-2033 (gmb-2024-31450).
+    'odwh.nl': ['Hillegom', 'Kaag en Braassem', 'Katwijk', 'Leiden', 'Leiderdorp', 'Lisse',
+      'Nieuwkoop', 'Noordwijk', 'Oegstgeest', 'Teylingen', 'Voorschoten', 'Zoeterwoude']
   };
 
   const fout = [];
@@ -744,9 +752,14 @@ test('de herbouw laat gecureerde afwijkingen staan en ruimt restanten op', async
   assert.strictEqual(p.leiden.bronDocument, null, 'oud bronDocument moet weg');
   assert.ok(!/officielebekendmakingen/.test(p.leiden.bronLink || ''), 'bronLink wijst nog naar het oude besluit');
 
-  assert.strictEqual(p.utrecht.herkomst, 'officiele-bekendmaking');
-  assert.strictEqual(p.utrecht.pfoa.landbouwNatuur, 2.5);
+  // Een AI-vondst levert nooit getallen, alleen een signaal.
+  assert.strictEqual(p.utrecht.herkomst, 'mogelijk-afwijkend');
+  assert.strictEqual(p.utrecht.heeftAfwijkendBeleid, false);
+  assert.strictEqual(p.utrecht.pfoa.landbouwNatuur, 1.9, 'AI-getal kwam in het dashboard');
   assert.strictEqual(p.utrecht.pfos.industrie, 3, 'restant van een eerdere afleiding liftte mee');
+  assert.strictEqual(p.utrecht.provincie, 'Utrecht');
+  assert.strictEqual(p.rotterdam.provincie, 'Zuid-Holland');
+  assert.strictEqual(p.rotterdam.bronDocument, 'gmb-2023-273075');
 
   assert.strictEqual(p.gouda.pfos.wonen, 1, 'handmatige overschrijving moet blijven');
   assert.strictEqual(uitkomst.curatie, 1);
@@ -832,6 +845,84 @@ test('de kaart koppelt namen die tussen bronnen verschillen', () => {
   assert.strictEqual(vindId('Hengelo'), 'hengelo-(o)');
   assert.strictEqual(vindId('Bergen op Zoom'), 'bergen-op-zoom');
   assert.ok(/'curatie':\s*\{/.test(html), 'de frontend kent de herkomst curatie niet');
+});
+
+// ------------------------------------------------------------------
+test('elke afwijkende norm is nagelezen en verwijst naar het besluit', () => {
+  const { afwijkend, mogelijkAfwijkend, landelijk_kader: lk } = require('../pfas_normen.json');
+  const gebied = require('../gemeente_provincie.json');
+  const fout = [];
+  for (const [g, d] of Object.entries(afwijkend)) {
+    if (!gebied[g]) fout.push(`${g}: geen gemeente volgens PDOK`);
+    if (!d.bronDocument) fout.push(`${g}: geen bronDocument`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d.geverifieerdOp || '')) fout.push(`${g}: geen geverifieerdOp`);
+    if (!d.opmerkingen) fout.push(`${g}: geen toelichting`);
+    const leeg = [];
+    let wijktAf = false;
+    for (const stof of ['pfos', 'pfoa', 'genx']) {
+      for (const klasse of ['wonen', 'industrie', 'landbouwNatuur']) {
+        const v = d[stof]?.[klasse];
+        if (v === null) leeg.push(`${stof}.${klasse}`);
+        else if (typeof v !== 'number') fout.push(`${g}: ${stof}.${klasse} ontbreekt`);
+        else if (v !== lk[stof][klasse]) wijktAf = true;
+      }
+    }
+    // Een lege waarde mag alleen als er uitgelegd is dat hij per zone verschilt.
+    const perZone = d.perZone || [];
+    if (leeg.sort().join() !== [...perZone].sort().join()) fout.push(`${g}: lege waarden ${leeg} ≠ perZone ${perZone}`);
+    if (!wijktAf && !perZone.length) fout.push(`${g}: staat als afwijkend maar is gelijk aan het kader`);
+  }
+  for (const g of Object.keys(mogelijkAfwijkend)) {
+    if (!gebied[g]) fout.push(`${g}: geen gemeente volgens PDOK`);
+    if (afwijkend[g]) fout.push(`${g}: zowel afwijkend als mogelijk-afwijkend`);
+  }
+  assert.deepStrictEqual(fout, []);
+});
+
+// ------------------------------------------------------------------
+test('de nagelezen getallen staan zoals in de besluiten', () => {
+  // Vastgezet zodat een "opschoonactie" ze niet ongemerkt terugzet. Bron per
+  // regel; wie hier iets wijzigt, leest eerst het besluit opnieuw.
+  const { afwijkend: a } = require('../pfas_normen.json');
+  const verwacht = [
+    // Omgevingsplan Gorinchem tabel 21.15.1 / Sliedrecht tabel 11.16.1: 0,0024 en 0,0023 mg/kg
+    ['Dordrecht', 'pfos', 'landbouwNatuur', 2.4], ['Dordrecht', 'pfoa', 'landbouwNatuur', 2.3],
+    ['Gorinchem', 'pfos', 'landbouwNatuur', 2.4], ['Sliedrecht', 'pfoa', 'landbouwNatuur', 2.3],
+    // Nota bodembeheer Rotterdam 2023 (gmb-2023-273075), tabel 4/5 en §3.1.3
+    ['Rotterdam', 'pfos', 'landbouwNatuur', 1.6], ['Rotterdam', 'pfos', 'industrie', 7],
+    ['Rotterdam', 'pfoa', 'landbouwNatuur', 1.9],
+    // Bodemkwaliteitskaart 2024 Nieuwegein
+    ['Nieuwegein', 'pfoa', 'landbouwNatuur', 3.8],
+    // Nota bodembeheer Rivierenland: 2,8** voor grond binnen de regio
+    ['Maasdriel', 'pfoa', 'landbouwNatuur', 2.8], ['Tiel', 'pfoa', 'landbouwNatuur', 2.8],
+    // Beleidsnota PFAS Utrecht, tabel 8 (Soest) / 17 (ODRU): zone B3 en B2
+    ['Houten', 'pfoa', 'landbouwNatuur', 2.9], ['Houten', 'pfos', 'landbouwNatuur', 1.8],
+    ['IJsselstein', 'pfoa', 'landbouwNatuur', 5.2],
+    // Nota bodembeheer OD IJmond, tabel 7
+    ['Velsen', 'pfos', 'landbouwNatuur', 2.6], ['Velsen', 'pfoa', 'landbouwNatuur', 1.9]
+  ];
+  for (const [g, stof, klasse, w] of verwacht) {
+    assert.strictEqual(a[g]?.[stof]?.[klasse], w, `${g} ${stof} ${klasse}`);
+  }
+  // De Hoeksche Waard ligt in zone A en volgt het landelijk kader.
+  assert.ok(!a['Hoeksche Waard']);
+});
+
+// ------------------------------------------------------------------
+test('elke gemeente krijgt een provincie en een omgevingsdienst', () => {
+  const { omgevingsdienstVan, leidGemeenteAf } = require('../checkBekendmakingen');
+  const { toDocId } = require('../docId');
+  const mapping = require('../gemeente_mapping.json');
+  const gebied = require('../gemeente_provincie.json');
+  assert.strictEqual(Object.keys(gebied).length, 342);
+  assert.deepStrictEqual(Object.keys(mapping).sort(), Object.keys(gebied).sort(),
+    'gemeente_mapping.json gebruikt andere namen dan PDOK');
+  const zonder = Object.entries(mapping).filter(([, u]) => !omgevingsdienstVan(u)).map(([g]) => g);
+  assert.deepStrictEqual(zonder, [], 'geen omgevingsdienst af te leiden');
+  const r = leidGemeenteAf({ docId: toDocId('Aa en Hunze'), bronLinkStandaard: mapping['Aa en Hunze'], vandaag: '2026-01-01' });
+  assert.strictEqual(r.provincie, 'Drenthe');
+  assert.strictEqual(r.omgevingsdienst, 'Omgevingsdienst Drenthe');
+  assert.strictEqual(r.herkomst, 'landelijk-kader-aanname');
 });
 
 // ------------------------------------------------------------------
