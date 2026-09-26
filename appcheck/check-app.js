@@ -131,14 +131,21 @@ async function main() {
       const api = await (await fetch('/api/v1/gemeenten')).json();
       const ids = new Set(api.map(r => r.id || toId(r.gemeente)));
       const paden = [...document.querySelectorAll('#map path[data-id]')];
+      // Bij elke gemeente zonder match: welk API-record lijkt erop? Dan is in
+      // één run te zien of het aan de kaartnaam of aan het document-id ligt.
+      const eerste = (x) => String(x || '').toLowerCase().split(/[\s(-]/)[0];
       return {
         totaal: paden.length,
-        zonder: paden.filter(p => !ids.has(p.dataset.id)).map(p => p.dataset.naam)
+        zonder: paden.filter(p => !ids.has(p.dataset.id)).map(p => {
+          const lijkt = api.filter(r => eerste(r.gemeente) === eerste(p.dataset.naam) || eerste(r.id) === eerste(p.dataset.naam))
+            .map(r => `id "${r.id}" / naam "${r.gemeente}"`);
+          return `${p.dataset.naam} (kaart-id "${p.dataset.id}"; API: ${lijkt.length ? lijkt.join(', ') : 'niets vergelijkbaars'})`;
+        })
       };
     });
     if (zonder.length) {
       throw new Error(`${zonder.length} van ${totaal} gemeenten op de kaart zonder normen: ` +
-        zonder.slice(0, 12).join(', ') + (zonder.length > 12 ? ', …' : ''));
+        zonder.slice(0, 12).join('; ') + (zonder.length > 12 ? '; …' : ''));
     }
     return `alle ${totaal} gemeenten op de kaart hebben normen`;
   });
