@@ -36,6 +36,13 @@ on:
         description: 'Alleen bij dubbelen-echt — typ VERWIJDER om te bevestigen'
         required: false
         default: ''
+  # Aangeroepen door normen-live.yml (alleen herbouw).
+  workflow_call:
+    inputs:
+      actie: { type: string, required: true }
+      vanaf: { type: string, required: false, default: '' }
+      max: { type: string, required: false, default: '15' }
+      bevestig: { type: string, required: false, default: '' }
 
 env:
   BASIS: https://us-central1-pfas-dashboard-nl-a808d.cloudfunctions.net
