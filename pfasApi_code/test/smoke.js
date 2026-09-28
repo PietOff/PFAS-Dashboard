@@ -846,7 +846,7 @@ test('de herbouw laat gecureerde afwijkingen staan en ruimt restanten op', async
         gevondenWaarden: { genx: { landbouwNatuur: 1.4 } }
       },
       'gmb-2021-1': {
-        gemeenteId: 'utrecht', titel: 'Nota bodembeheer', identifier: 'gmb-2021-1',
+        gemeenteId: 'apeldoorn', titel: 'Nota bodembeheer', identifier: 'gmb-2021-1',
         publicatieDatum: '2021-01-01', aiZekerheid: 'hoog', heeftAfwijkendeWaarden: true,
         url: 'https://zoek.officielebekendmakingen.nl/gmb-2021-1.html',
         gevondenWaarden: { pfoa: { landbouwNatuur: 2.5 } }
@@ -864,8 +864,8 @@ test('de herbouw laat gecureerde afwijkingen staan en ruimt restanten op', async
         bronDocument: 'gmb-2024-31450', bronLink: 'https://zoek.officielebekendmakingen.nl/gmb-2024-31450.html',
         genx: { wonen: 3, industrie: 3, landbouwNatuur: 1.4 }
       },
-      utrecht: {
-        gemeente: 'Utrecht', herkomst: 'landelijk-kader-aanname',
+      apeldoorn: {
+        gemeente: 'Apeldoorn', herkomst: 'landelijk-kader-aanname',
         // Restant van een eerdere, verkeerde afleiding: mag niet meeliften.
         pfos: { wonen: 3, industrie: 9, landbouwNatuur: 1.4 }
       },
@@ -903,11 +903,11 @@ test('de herbouw laat gecureerde afwijkingen staan en ruimt restanten op', async
   assert.ok(!/officielebekendmakingen/.test(p.leiden.bronLink || ''), 'bronLink wijst nog naar het oude besluit');
 
   // Een AI-vondst levert nooit getallen, alleen een signaal.
-  assert.strictEqual(p.utrecht.herkomst, 'mogelijk-afwijkend');
-  assert.strictEqual(p.utrecht.heeftAfwijkendBeleid, false);
-  assert.strictEqual(p.utrecht.pfoa.landbouwNatuur, 1.9, 'AI-getal kwam in het dashboard');
-  assert.strictEqual(p.utrecht.pfos.industrie, 3, 'restant van een eerdere afleiding liftte mee');
-  assert.strictEqual(p.utrecht.provincie, 'Utrecht');
+  assert.strictEqual(p.apeldoorn.herkomst, 'mogelijk-afwijkend');
+  assert.strictEqual(p.apeldoorn.heeftAfwijkendBeleid, false);
+  assert.strictEqual(p.apeldoorn.pfoa.landbouwNatuur, 1.9, 'AI-getal kwam in het dashboard');
+  assert.strictEqual(p.apeldoorn.pfos.industrie, 3, 'restant van een eerdere afleiding liftte mee');
+  assert.strictEqual(p.apeldoorn.provincie, 'Gelderland');
   assert.strictEqual(p.rotterdam.provincie, 'Zuid-Holland');
   assert.strictEqual(p.rotterdam.bronDocument, 'gmb-2023-273075');
 
@@ -927,13 +927,13 @@ test('de audit ziet getallen die niet bij hun herkomst passen', () => {
   assert.ok(rotterdam.length > 0);
 
   // Het oude kader (GenX 0,8) moet opvallen.
-  const oud = controleerNormen('utrecht', {
+  const oud = controleerNormen('apeldoorn', {
     herkomst: 'landelijk-kader-aanname', pfos: lk.pfos, pfoa: lk.pfoa,
     genx: { wonen: 3, industrie: 3, landbouwNatuur: 0.8 }
   });
   assert.strictEqual(oud.length, 1);
 
-  assert.deepStrictEqual(controleerNormen('utrecht', {
+  assert.deepStrictEqual(controleerNormen('apeldoorn', {
     herkomst: 'landelijk-kader-aanname', pfos: lk.pfos, pfoa: lk.pfoa, genx: lk.genx
   }), []);
 
@@ -1052,7 +1052,15 @@ test('de nagelezen getallen staan zoals in de besluiten', () => {
     ['Houten', 'pfoa', 'landbouwNatuur', 2.9], ['Houten', 'pfos', 'landbouwNatuur', 1.8],
     ['IJsselstein', 'pfoa', 'landbouwNatuur', 5.2],
     // Nota bodembeheer OD IJmond, tabel 7
-    ['Velsen', 'pfos', 'landbouwNatuur', 2.6], ['Velsen', 'pfoa', 'landbouwNatuur', 1.9]
+    ['Velsen', 'pfos', 'landbouwNatuur', 2.6], ['Velsen', 'pfoa', 'landbouwNatuur', 1.9],
+    // Aanvulling Nota bodembeheer Utrecht 2020 (exb-2020-52621), tabel 1
+    ['Utrecht', 'pfos', 'landbouwNatuur', 2.19], ['Utrecht', 'pfoa', 'landbouwNatuur', 4.35],
+    // Nota bodembeheer regio Achterhoek §2.5.11: toepassingseis Wonen = landelijke achtergrondwaarden
+    ['Winterswijk', 'pfoa', 'wonen', 1.9], ['Winterswijk', 'pfos', 'wonen', 1.4],
+    // Nota bodembeheer Tholen 2022 art. 5 / Reimerswaal 2023 art. 10
+    ['Tholen', 'pfos', 'landbouwNatuur', 1.5], ['Reimerswaal', 'pfos', 'landbouwNatuur', 3],
+    // Nota Bodembeheer 2021 Toepassen van grond Nijmegen, tabel 5
+    ['Nijmegen', 'pfoa', 'wonen', 1.9], ['Nijmegen', 'pfos', 'industrie', 1.4]
   ];
   for (const [g, stof, klasse, w] of verwacht) {
     assert.strictEqual(a[g]?.[stof]?.[klasse], w, `${g} ${stof} ${klasse}`);

@@ -365,16 +365,38 @@ Nagelezen (2026-09-26), met de besluiten in `pfas_normen.json`:
 | Rotterdam | Rotterdam | PFOS 1,6; industrie PFOS 7 voor grond uit Rotterdam |
 | Nieuwegein | Nieuwegein | PFOA 3,8 voor grond uit Nieuwegein |
 | Helmond | Helmond | per bodemkwaliteitszone |
-| Rivierenland | Culemborg, Maasdriel, Neder-Betuwe, Tiel, Zaltbommel | PFOA 2,8 voor grond uit de regio |
-| Utrecht zone B3 | Bunnik, Houten, Renswoude, Rhenen, Soest, Stichtse Vecht, Veenendaal | PFOS 1,8 · PFOA 2,9 binnen de zone |
+| Rivierenland | Culemborg, Maasdriel, Neder-Betuwe, Tiel, Zaltbommel, West Betuwe, West Maas en Waal | PFOA 2,8 voor grond uit de regio |
+| Utrecht zone B3 | Bunnik, Houten, Renswoude, Rhenen, Soest, Stichtse Vecht, Veenendaal, De Bilt, Leusden, Utrechtse Heuvelrug, Wijk bij Duurstede, Zeist | PFOS 1,8 · PFOA 2,9 binnen de zone |
 | Utrecht zone B2 | IJsselstein, Oudewater | PFOS 1,8 · PFOA 5,2 binnen de zone |
 | Utrecht, meerdere zones | Woerden, Vijfheerenlanden | per zone |
+| Utrecht (gemeente) | Utrecht | PFOS 2,19 · PFOA 4,35 (eigen beleid 2020, bovenste meter) |
 | Zuid-Kennemerland-IJmond | Beverwijk, Bloemendaal, Heemskerk, Heemstede, Uitgeest, Velsen, Zandvoort | PFOS 2,6 (bovengrond) |
+| Achterhoek | Montferland, Winterswijk | **strenger**: toepassingseis Wonen PFOS 1,4 · PFOA 1,9 · overig 1,4 |
+| Nijmegen | Nijmegen | **strenger**: wonen en industrie PFOA 1,9 · overig (incl. PFOS) 1,4 |
+| Bevelanden en Tholen | Tholen | PFOS 1,5 voor grond uit de regio |
+| Reimerswaal | Reimerswaal | PFOS 3,0 voor eigen grond; strook Westerschelde PFOS 15 · PFOA 7 |
+| Hardenberg | Hardenberg | PFOA 30 · PFOS 29 in vier bodembeheergebieden, elders landelijk |
 
 Nagelezen en **gelijk aan het landelijk kader**: Twente, Noord-Brabant (BKK
 PFAS), Midden-Holland (wel geen dubbele toets voor grond uit de regio),
 Zaanstreek-Waterland, Noord-Veluwe, De Vallei, Moerdijk, Hoeksche Waard (zone
 A), Kerkrade en Noord- en Midden-Limburg.
+
+Review van de 48 `mogelijk-afwijkend`-gemeenten (2026-09-28): 13 bleken vastgesteld
+afwijkend (hierboven verwerkt), 24 volgen het landelijk kader en 11 blijven twijfelachtig.
+Landelijk kader, met het signaaldocument in `nagelezenZonderAfwijking`:
+Aalsmeer, Amstelveen, Diemen, Ouder-Amstel, Uithoorn en Haarlemmermeer (PFAS-beleidsregel
+ingetrokken in 2023), de Brabantse gemeenten Alphen-Chaam, Baarle-Nassau, Bergen op Zoom,
+Breda, Eersel, Geertruidenberg, Gilze en Rijen, Loon op Zand, Reusel-De Mierden,
+Roosendaal, Sint-Michielsgestel, Steenbergen en Tilburg (de PFOS 10,1 in de regionale nota
+geldt alleen voor Waalwijk GOL/Haven Acht), en Leeuwarden, Losser, Scherpenzeel en
+Zoetermeer. Twijfel, op `mogelijkAfwijkend` met de reden: Amersfoort, Baarn, Bunschoten,
+Eemnes, Lopik, Woudenberg (geen vaststelling gevonden), Montfoort (vaststelling zonder
+inhoud), De Ronde Venen en Buren (alleen ontwerp) en Nissewaard (lokale waarden van 2020,
+nu strenger dan landelijk).
+
+Let op: de sweep vindt intrekkingsbesluiten niet, omdat die geen bodemterm bevatten. De
+zes ingetrokken beleidsregels hierboven stonden daardoor nog als signaal in het corpus.
 
 Het corpus bevatte bij de controle **25 van de 999** relevante publicaties: de
 backfill vanaf 2019 is nooit afgemaakt. Draai na deploy de sweep met

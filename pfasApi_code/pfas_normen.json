@@ -145,6 +145,30 @@
       "bronDocumentDatum": "2021-09-03",
       "geverifieerdOp": "2026-09-26"
     },
+    "De Bilt": {
+      "regio": "Utrecht, PFAS-zone B3",
+      "pfos": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.8
+      },
+      "pfoa": {
+        "wonen": 7.0,
+        "industrie": 7.0,
+        "landbouwNatuur": 2.9
+      },
+      "genx": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer werkgebied ODRU, vastgesteld door de gemeenteraad: voor grond die binnen dezelfde PFAS-zone wordt hergebruikt gelden voor landbouw/natuur (bovengrond 0–0,5 m-mv) lokale maximale waarden: zone B3, PFOS 1,8 · PFOA 2,9 · overige PFAS 1,4 µg/kg ds. Tussen zones en voor grond van buiten de provincie gelden strengere waarden (zie de nota). Wonen en industrie volgen het landelijk kader.",
+      "bronLink": null,
+      "bronDocument": "gmb-2022-576688",
+      "bronDocumentTitel": "Nota bodembeheer met bijbehorende kaarten (werkgebied ODRU)",
+      "bronDocumentDatum": "2022-12-28",
+      "geverifieerdOp": "2026-09-28"
+    },
     "Dordrecht": {
       "regio": "Zuid-Holland Zuid, PFOA-zone B",
       "pfos": {
@@ -194,6 +218,38 @@
       "bronDocumentTitel": "Omgevingsplan gemeente Gorinchem",
       "bronDocumentDatum": "2025-10-03",
       "geverifieerdOp": "2026-09-26"
+    },
+    "Hardenberg": {
+      "regio": "Hardenberg, vier bodembeheergebieden",
+      "pfos": {
+        "wonen": null,
+        "industrie": null,
+        "landbouwNatuur": null
+      },
+      "pfoa": {
+        "wonen": null,
+        "industrie": null,
+        "landbouwNatuur": null
+      },
+      "genx": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Omgevingsplan Hardenberg, wijziging 'Gebiedsspecifiek bodembeleid' (besluit 6 mei 2025), art. 4.5: in de bodembeheergebieden 't Refter (Sibculo), De Marke (Mariënberg), De Kuilen IV (Bruchterveld) en Rollepaal (Dedemsvaart) mag grond uit die gebieden worden toegepast tot PFOA 30 · PFOS 29 µg/kg ds, als de risico-index voor Wonen onder 1 blijft. Buiten deze gebieden geldt het landelijk kader (Nota bodembeheer Regio IJsselland). GenX en overige PFAS: landelijk kader.",
+      "bronLink": null,
+      "bronDocument": "gmb-2025-201306",
+      "bronDocumentTitel": "Wijzigingsbesluit Omgevingsplan gemeente Hardenberg ‘Gebiedsspecifiek bodembeleid’",
+      "bronDocumentDatum": "2025-05-07",
+      "geverifieerdOp": "2026-09-28",
+      "perZone": [
+        "pfos.wonen",
+        "pfos.industrie",
+        "pfos.landbouwNatuur",
+        "pfoa.wonen",
+        "pfoa.industrie",
+        "pfoa.landbouwNatuur"
+      ]
     },
     "Hardinxveld-Giessendam": {
       "regio": "Zuid-Holland Zuid, PFOA-zone B",
@@ -375,6 +431,30 @@
       "bronDocumentDatum": "2022-11-29",
       "geverifieerdOp": "2026-09-26"
     },
+    "Leusden": {
+      "regio": "Utrecht, PFAS-zone B3",
+      "pfos": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.8
+      },
+      "pfoa": {
+        "wonen": 7.0,
+        "industrie": 7.0,
+        "landbouwNatuur": 2.9
+      },
+      "genx": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer gemeente Leusden (2022): de gemeente heeft de Beleidsnota PFAS provincie Utrecht (7 april 2021) vastgesteld en toetst PFAS daaraan. Leusden ligt in zone B3: voor grond die binnen dezelfde PFAS-zone wordt hergebruikt gelden voor landbouw/natuur (bovengrond) lokale maximale waarden PFOS 1,8 · PFOA 2,9 · overige PFAS 1,4 µg/kg ds. Tussen zones en voor grond van buiten de provincie gelden strengere waarden. Wonen en industrie volgen het landelijk kader.",
+      "bronLink": null,
+      "bronDocument": "gmb-2022-576422",
+      "bronDocumentTitel": "Nota bodembeheer gemeente Leusden",
+      "bronDocumentDatum": "2022-12-28",
+      "geverifieerdOp": "2026-09-28"
+    },
     "Maasdriel": {
       "regio": "Rivierenland",
       "pfos": {
@@ -424,6 +504,30 @@
       "bronDocumentTitel": "Voorbereidingsbesluit met voorbeschermingsregels bodem gemeente Molenlanden 2025",
       "bronDocumentDatum": "2025-06-27",
       "geverifieerdOp": "2026-09-26"
+    },
+    "Montferland": {
+      "regio": "Achterhoek",
+      "pfos": {
+        "wonen": 1.4,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "pfoa": {
+        "wonen": 1.9,
+        "industrie": 7.0,
+        "landbouwNatuur": 1.9
+      },
+      "genx": {
+        "wonen": 1.4,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer regio Achterhoek §2.5.11 (via het overgangsrecht deel van het omgevingsplan): waar op grond van de overige stoffen de toepassingseis kwaliteitsklasse Wonen geldt, mag de toe te passen grond geen PFAS boven de landelijke achtergrondwaarden bevatten: PFOS 1,4 · PFOA 1,9 · overige PFAS 1,4 µg/kg ds. Dat is strenger dan het landelijk kader. Industrie en landbouw/natuur volgen het landelijk kader.",
+      "bronLink": null,
+      "bronDocument": "gmb-2021-428353",
+      "bronDocumentTitel": "Nota bodembeheer en bodemkwaliteitskaart Regio Achterhoek",
+      "bronDocumentDatum": "2021-11-29",
+      "geverifieerdOp": "2026-09-28"
     },
     "Neder-Betuwe": {
       "regio": "Rivierenland",
@@ -475,6 +579,30 @@
       "bronDocumentDatum": "2024",
       "geverifieerdOp": "2026-09-26"
     },
+    "Nijmegen": {
+      "regio": "Nijmegen",
+      "pfos": {
+        "wonen": 1.4,
+        "industrie": 1.4,
+        "landbouwNatuur": 1.4
+      },
+      "pfoa": {
+        "wonen": 1.9,
+        "industrie": 1.9,
+        "landbouwNatuur": 1.9
+      },
+      "genx": {
+        "wonen": 1.4,
+        "industrie": 1.4,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota Bodembeheer 2021 Toepassen van grond (gebiedsspecifiek kader, tabel 5): in alle deelgebieden is de lokale maximale waarde voor PFOA 1,9 en voor overige PFAS (inclusief PFOS en GenX) 1,4 µg/kg ds, in beide bodemtrajecten. Nijmegen staat dus ook waar het landelijk kader Wonen of Industrie toelaat alleen grond op landbouw/natuur-niveau toe, om verslechtering te voorkomen. In het grondwaterbeschermingsgebied Heumensoord gelden strengere waarden.",
+      "bronLink": null,
+      "bronDocument": "gmb-2023-69999",
+      "bronDocumentTitel": "Nota Bodembeheer 2021 Toepassen van grond",
+      "bronDocumentDatum": "2023-02-16",
+      "geverifieerdOp": "2026-09-28"
+    },
     "Oudewater": {
       "regio": "Utrecht, PFAS-zone B2",
       "pfos": {
@@ -524,6 +652,30 @@
       "bronDocumentTitel": "Omgevingsplan gemeente Papendrecht",
       "bronDocumentDatum": "2025-07-18",
       "geverifieerdOp": "2026-09-26"
+    },
+    "Reimerswaal": {
+      "regio": "Reimerswaal, zone Overig Reimerswaal",
+      "pfos": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 3.0
+      },
+      "pfoa": {
+        "wonen": 7.0,
+        "industrie": 7.0,
+        "landbouwNatuur": 1.9
+      },
+      "genx": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer gemeente Reimerswaal 2023, art. 10: grond uit Reimerswaal die wordt toegepast op landbouw/natuur voldoet tot 1,0 m-mv voor PFOS aan 3,0 µg/kg ds; PFOA 1,9 en overige PFAS 1,4 (art. 9). Wonen en industrie: landelijk kader (art. 4). Uitzondering: binnen een strook van 200 m langs de Westerschelde mag grond uit die strook (herkomst Reimerswaal, Kapelle of Borsele) tot PFOS 15 · PFOA 7 · overige PFAS 1,4 bevatten (art. 11).",
+      "bronLink": null,
+      "bronDocument": "gmb-2024-37380",
+      "bronDocumentTitel": "Nota bodembeheer gemeente Reimerswaal 2023",
+      "bronDocumentDatum": "2024-01-23",
+      "geverifieerdOp": "2026-09-28"
     },
     "Renswoude": {
       "regio": "Utrecht, PFAS-zone B3",
@@ -675,6 +827,30 @@
       "bronDocumentDatum": "2024-10-10",
       "geverifieerdOp": "2026-09-26"
     },
+    "Tholen": {
+      "regio": "Bevelanden en Tholen",
+      "pfos": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.5
+      },
+      "pfoa": {
+        "wonen": 7.0,
+        "industrie": 7.0,
+        "landbouwNatuur": 1.9
+      },
+      "genx": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer gemeente Tholen 2022, art. 5: voor grond uit de regio Bevelanden en Tholen (Borsele, Goes, Kapelle, Reimerswaal, Noord-Beveland, Tholen) geldt waar landbouw/natuur de toepassingseis is, tot 2,0 m-mv: PFOS 1,5 · PFOA 1,9 · overige PFAS 1,4 µg/kg ds. Wonen en industrie (tot 1,0 m-mv): landelijk kader. Grond van buiten de regio: landelijke achtergrondwaarden.",
+      "bronLink": null,
+      "bronDocument": "gmb-2022-377974",
+      "bronDocumentTitel": "Nota bodembeheer gemeente Tholen 2022",
+      "bronDocumentDatum": "2022-08-22",
+      "geverifieerdOp": "2026-09-28"
+    },
     "Tiel": {
       "regio": "Rivierenland",
       "pfos": {
@@ -724,6 +900,54 @@
       "bronDocumentTitel": "Nota Bodembeheer deelnemende gemeenten Omgevingsdienst IJmond",
       "bronDocumentDatum": "2024-03-21",
       "geverifieerdOp": "2026-09-26"
+    },
+    "Utrecht": {
+      "regio": "Utrecht (gemeente)",
+      "pfos": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 2.19
+      },
+      "pfoa": {
+        "wonen": 7.0,
+        "industrie": 7.0,
+        "landbouwNatuur": 4.35
+      },
+      "genx": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Aanvulling Nota bodembeheer 2017-2027 met lokale maximale waarden PFAS (college 7 april 2020; in 2026 in het omgevingsplan nog als geldend beleid genoemd): voor landbouw/natuur gelden de lokale achtergrondwaarden PFOS 2,19 · PFOA 4,35 µg/kg ds; de hele gemeente is één zone, voor de bovenste meter. Voor overige PFAS geldt de landelijke achtergrondwaarde (in 2020: 0,8). Wonen en industrie volgen het landelijk kader. Grond van buiten Utrecht moet voor alle functies aan 2,19 / 4,35 / 0,8 voldoen (tabel 1 van de bijlage).",
+      "bronLink": null,
+      "bronDocument": "gmb-2020-255720",
+      "bronDocumentTitel": "Aanvulling Nota Bodembeheer: lokale maximale waarden PFAS in grond",
+      "bronDocumentDatum": "2020-10-05",
+      "geverifieerdOp": "2026-09-28"
+    },
+    "Utrechtse Heuvelrug": {
+      "regio": "Utrecht, PFAS-zone B3",
+      "pfos": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.8
+      },
+      "pfoa": {
+        "wonen": 7.0,
+        "industrie": 7.0,
+        "landbouwNatuur": 2.9
+      },
+      "genx": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer werkgebied ODRU, vastgesteld door de gemeenteraad: voor grond die binnen dezelfde PFAS-zone wordt hergebruikt gelden voor landbouw/natuur (bovengrond 0–0,5 m-mv) lokale maximale waarden: zone B3, PFOS 1,8 · PFOA 2,9 · overige PFAS 1,4 µg/kg ds. Tussen zones en voor grond van buiten de provincie gelden strengere waarden (zie de nota). Wonen en industrie volgen het landelijk kader.",
+      "bronLink": null,
+      "bronDocument": "gmb-2022-506420",
+      "bronDocumentTitel": "Nota Bodembeheer incl. PFAS (werkgebied ODRU)",
+      "bronDocumentDatum": "2022-11-15",
+      "geverifieerdOp": "2026-09-28"
     },
     "Veenendaal": {
       "regio": "Utrecht, PFAS-zone B3",
@@ -804,6 +1028,102 @@
         "pfoa.landbouwNatuur"
       ]
     },
+    "West Betuwe": {
+      "regio": "Rivierenland",
+      "pfos": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "pfoa": {
+        "wonen": 7.0,
+        "industrie": 7.0,
+        "landbouwNatuur": 2.8
+      },
+      "genx": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer regio Rivierenland, vastgesteld door de gemeenteraad: voor grond afkomstig van binnen de regio Rivierenland geldt bij toepassen op landbouw/natuur (boven grondwaterniveau, tot 0,5 m-mv) PFOA 2,8 µg/kg ds; PFOS en overige PFAS 1,4. Voor grond van buiten de regio en voor dieper toepassen geldt het landelijk kader.",
+      "bronLink": null,
+      "bronDocument": "gmb-2021-127031",
+      "bronDocumentTitel": "Nota bodembeheer regio Rivierenland (met PFAS-beleid)",
+      "bronDocumentDatum": "2021-04-22",
+      "geverifieerdOp": "2026-09-28"
+    },
+    "West Maas en Waal": {
+      "regio": "Rivierenland",
+      "pfos": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "pfoa": {
+        "wonen": 7.0,
+        "industrie": 7.0,
+        "landbouwNatuur": 2.8
+      },
+      "genx": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer regio Rivierenland, vastgesteld door de gemeenteraad: voor grond afkomstig van binnen de regio Rivierenland geldt bij toepassen op landbouw/natuur (boven grondwaterniveau, tot 0,5 m-mv) PFOA 2,8 µg/kg ds; PFOS en overige PFAS 1,4. Voor grond van buiten de regio en voor dieper toepassen geldt het landelijk kader.",
+      "bronLink": null,
+      "bronDocument": "gmb-2021-337387",
+      "bronDocumentTitel": "Raadsbesluit bodemkwaliteitskaart en nota bodembeheer inclusief PFAS",
+      "bronDocumentDatum": "2021-09-30",
+      "geverifieerdOp": "2026-09-28"
+    },
+    "Wijk bij Duurstede": {
+      "regio": "Utrecht, PFAS-zone B3",
+      "pfos": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.8
+      },
+      "pfoa": {
+        "wonen": 7.0,
+        "industrie": 7.0,
+        "landbouwNatuur": 2.9
+      },
+      "genx": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer werkgebied ODRU, vastgesteld door de gemeenteraad: voor grond die binnen dezelfde PFAS-zone wordt hergebruikt gelden voor landbouw/natuur (bovengrond 0–0,5 m-mv) lokale maximale waarden: zone B3, PFOS 1,8 · PFOA 2,9 · overige PFAS 1,4 µg/kg ds. Tussen zones en voor grond van buiten de provincie gelden strengere waarden (zie de nota). Wonen en industrie volgen het landelijk kader.",
+      "bronLink": null,
+      "bronDocument": "gmb-2022-531251",
+      "bronDocumentTitel": "Nota bodembeheer met bijbehorende kaarten (werkgebied ODRU)",
+      "bronDocumentDatum": "2022-11-30",
+      "geverifieerdOp": "2026-09-28"
+    },
+    "Winterswijk": {
+      "regio": "Achterhoek",
+      "pfos": {
+        "wonen": 1.4,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "pfoa": {
+        "wonen": 1.9,
+        "industrie": 7.0,
+        "landbouwNatuur": 1.9
+      },
+      "genx": {
+        "wonen": 1.4,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer regio Achterhoek §2.5.11 (via het overgangsrecht deel van het omgevingsplan): waar op grond van de overige stoffen de toepassingseis kwaliteitsklasse Wonen geldt, mag de toe te passen grond geen PFAS boven de landelijke achtergrondwaarden bevatten: PFOS 1,4 · PFOA 1,9 · overige PFAS 1,4 µg/kg ds. Dat is strenger dan het landelijk kader. Industrie en landbouw/natuur volgen het landelijk kader.",
+      "bronLink": null,
+      "bronDocument": "gmb-2021-357005",
+      "bronDocumentTitel": "Nota bodembeheer en bodemkwaliteitskaart Regio Achterhoek",
+      "bronDocumentDatum": "2021-10-13",
+      "geverifieerdOp": "2026-09-28"
+    },
     "Woerden": {
       "regio": "Utrecht, meerdere PFAS-zones",
       "pfos": {
@@ -883,6 +1203,30 @@
       "bronDocumentDatum": "2024-03-21",
       "geverifieerdOp": "2026-09-26"
     },
+    "Zeist": {
+      "regio": "Utrecht, PFAS-zone B3",
+      "pfos": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.8
+      },
+      "pfoa": {
+        "wonen": 7.0,
+        "industrie": 7.0,
+        "landbouwNatuur": 2.9
+      },
+      "genx": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer werkgebied ODRU, vastgesteld door de gemeenteraad: voor grond die binnen dezelfde PFAS-zone wordt hergebruikt gelden voor landbouw/natuur (bovengrond 0–0,5 m-mv) lokale maximale waarden: zone B3, PFOS 1,8 · PFOA 2,9 · overige PFAS 1,4 µg/kg ds. Tussen zones en voor grond van buiten de provincie gelden strengere waarden (zie de nota). Wonen en industrie volgen het landelijk kader.",
+      "bronLink": null,
+      "bronDocument": "gmb-2022-524144",
+      "bronDocumentTitel": "Nota bodembeheer met bijbehorende kaarten (werkgebied ODRU)",
+      "bronDocumentDatum": "2022-11-24",
+      "geverifieerdOp": "2026-09-28"
+    },
     "Zwijndrecht": {
       "regio": "Zuid-Holland Zuid, PFOA-zone B",
       "pfos": {
@@ -911,144 +1255,112 @@
   },
   "mogelijkAfwijkend": {
     "Amersfoort": {
-      "opmerkingen": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden, maar een vaststelling door deze gemeente is niet gevonden. Het dashboard toont daarom het landelijk kader; controleer bij de gemeente of omgevingsdienst.",
+      "opmerkingen": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden. Een vaststelling door deze gemeente is in de officiële bekendmakingen niet gevonden (nagezocht 2026-09-28); Leusden stelde dezelfde nota wel vast zonder aparte bekendmaking, dus dat bewijst niet dat die ontbreekt. Het dashboard toont het landelijk kader; controleer bij de gemeente of de RUD Utrecht.",
       "bronDocument": "gmb-2024-428959",
       "bronDocumentTitel": "Nota bodembeheer werkgebied ODRU (zonering provincie Utrecht)",
       "bronDocumentDatum": "2024-10-10",
       "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
+      "geverifieerdOp": "2026-09-28"
     },
     "Baarn": {
-      "opmerkingen": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden, maar een vaststelling door deze gemeente is niet gevonden. Het dashboard toont daarom het landelijk kader; controleer bij de gemeente of omgevingsdienst.",
+      "opmerkingen": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden. Een vaststelling door deze gemeente is in de officiële bekendmakingen niet gevonden (nagezocht 2026-09-28); Leusden stelde dezelfde nota wel vast zonder aparte bekendmaking, dus dat bewijst niet dat die ontbreekt. Het dashboard toont het landelijk kader; controleer bij de gemeente of de RUD Utrecht.",
       "bronDocument": "gmb-2024-428959",
       "bronDocumentTitel": "Nota bodembeheer werkgebied ODRU (zonering provincie Utrecht)",
       "bronDocumentDatum": "2024-10-10",
       "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
+      "geverifieerdOp": "2026-09-28"
     },
     "Bunschoten": {
-      "opmerkingen": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden, maar een vaststelling door deze gemeente is niet gevonden. Het dashboard toont daarom het landelijk kader; controleer bij de gemeente of omgevingsdienst.",
+      "opmerkingen": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden. Een vaststelling door deze gemeente is in de officiële bekendmakingen niet gevonden (nagezocht 2026-09-28); Leusden stelde dezelfde nota wel vast zonder aparte bekendmaking, dus dat bewijst niet dat die ontbreekt. Het dashboard toont het landelijk kader; controleer bij de gemeente of de RUD Utrecht.",
       "bronDocument": "gmb-2024-428959",
       "bronDocumentTitel": "Nota bodembeheer werkgebied ODRU (zonering provincie Utrecht)",
       "bronDocumentDatum": "2024-10-10",
       "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
+      "geverifieerdOp": "2026-09-28"
     },
     "Buren": {
-      "opmerkingen": "De Nota bodembeheer regio Rivierenland noemt deze gemeente als deelnemer (PFOA landbouw/natuur 2,8 µg/kg ds voor grond uit de regio), maar een vaststellingsbesluit van deze gemeente is niet gevonden. Het dashboard toont daarom het landelijk kader; controleer bij de gemeente.",
+      "opmerkingen": "De Nota bodembeheer regio Rivierenland noemt Buren als deelnemer (PFOA landbouw/natuur 2,8 µg/kg ds voor grond uit de regio). Van Buren is alleen de terinzagelegging (februari 2021) gevonden, geen vaststellingsbesluit (nagezocht 2026-09-28). Het dashboard toont het landelijk kader; controleer bij de gemeente.",
       "bronDocument": "gmb-2021-428289",
       "bronDocumentTitel": "Nota bodembeheer regio Rivierenland",
       "bronDocumentDatum": "2021-11-29",
       "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
-    },
-    "De Bilt": {
-      "opmerkingen": "Van de Nota bodembeheer werkgebied ODRU (met lokale maximale waarden per PFAS-zone) is voor deze gemeente alleen het ontwerp gevonden, geen vaststelling. Het dashboard toont daarom het landelijk kader; controleer bij de gemeente.",
-      "bronDocument": "gmb-2022-105884",
-      "bronDocumentTitel": "Ontwerp Nota bodembeheer werkgebied ODRU",
-      "bronDocumentDatum": "2022-03-10",
-      "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
+      "geverifieerdOp": "2026-09-28"
     },
     "De Ronde Venen": {
-      "opmerkingen": "De Nota bodembeheer werkgebied ODRU (met lokale maximale waarden per PFAS-zone) noemt deze gemeente als deelnemer, maar een vaststellingsbesluit van deze gemeente is niet gevonden. Het dashboard toont daarom het landelijk kader; controleer bij de gemeente.",
-      "bronDocument": "gmb-2024-428959",
-      "bronDocumentTitel": "Nota bodembeheer werkgebied ODRU (deelnemerslijst)",
-      "bronDocumentDatum": "2024-10-10",
+      "opmerkingen": "De Ronde Venen hoort bij het werkgebied ODRU, maar alleen een ontwerp van een eigen Nota bodembeheer (2022) is gevonden, geen vaststelling. Het dashboard toont het landelijk kader; controleer bij de gemeente.",
+      "bronDocument": "gmb-2022-59141",
+      "bronDocumentTitel": "Ontwerpnota Bodembeheer De Ronde Venen",
+      "bronDocumentDatum": "2022-02-10",
       "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
+      "geverifieerdOp": "2026-09-28"
     },
     "Eemnes": {
-      "opmerkingen": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden, maar een vaststelling door deze gemeente is niet gevonden. Het dashboard toont daarom het landelijk kader; controleer bij de gemeente of omgevingsdienst.",
+      "opmerkingen": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden. Een vaststelling door deze gemeente is in de officiële bekendmakingen niet gevonden (nagezocht 2026-09-28); Leusden stelde dezelfde nota wel vast zonder aparte bekendmaking, dus dat bewijst niet dat die ontbreekt. Het dashboard toont het landelijk kader; controleer bij de gemeente of de RUD Utrecht.",
       "bronDocument": "gmb-2024-428959",
       "bronDocumentTitel": "Nota bodembeheer werkgebied ODRU (zonering provincie Utrecht)",
       "bronDocumentDatum": "2024-10-10",
       "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
-    },
-    "Leusden": {
-      "opmerkingen": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden, maar een vaststelling door deze gemeente is niet gevonden. Het dashboard toont daarom het landelijk kader; controleer bij de gemeente of omgevingsdienst.",
-      "bronDocument": "gmb-2024-428959",
-      "bronDocumentTitel": "Nota bodembeheer werkgebied ODRU (zonering provincie Utrecht)",
-      "bronDocumentDatum": "2024-10-10",
-      "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
+      "geverifieerdOp": "2026-09-28"
     },
     "Lopik": {
-      "opmerkingen": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden, maar een vaststelling door deze gemeente is niet gevonden. Het dashboard toont daarom het landelijk kader; controleer bij de gemeente of omgevingsdienst.",
+      "opmerkingen": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden. Een vaststelling door deze gemeente is in de officiële bekendmakingen niet gevonden (nagezocht 2026-09-28); Leusden stelde dezelfde nota wel vast zonder aparte bekendmaking, dus dat bewijst niet dat die ontbreekt. Het dashboard toont het landelijk kader; controleer bij de gemeente of de RUD Utrecht.",
       "bronDocument": "gmb-2024-428959",
       "bronDocumentTitel": "Nota bodembeheer werkgebied ODRU (zonering provincie Utrecht)",
       "bronDocumentDatum": "2024-10-10",
       "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
+      "geverifieerdOp": "2026-09-28"
     },
     "Montfoort": {
-      "opmerkingen": "Van de Nota bodembeheer werkgebied ODRU (met lokale maximale waarden per PFAS-zone) is voor deze gemeente alleen het ontwerp gevonden, geen vaststelling. Het dashboard toont daarom het landelijk kader; controleer bij de gemeente.",
-      "bronDocument": "gmb-2022-148496",
-      "bronDocumentTitel": "Ontwerp Nota bodembeheer werkgebied ODRU",
-      "bronDocumentDatum": "2022-04-04",
+      "opmerkingen": "De gemeenteraad heeft op 26 september 2022 een 'Nota bodembeheer' vastgesteld; de bekendmaking noemt de inhoud niet. Eerder lag de Nota bodembeheer werkgebied ODRU hier in ontwerp ter inzage, dus vermoedelijk is dat die nota (Montfoort ligt in PFAS-zone B2: landbouw/natuur PFOS 1,8 · PFOA 5,2). Niet bevestigd; het dashboard toont het landelijk kader.",
+      "bronDocument": "gmb-2022-457438",
+      "bronDocumentTitel": "Nota Bodembeheer (vaststelling)",
+      "bronDocumentDatum": "2022-10-13",
       "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
+      "geverifieerdOp": "2026-09-28"
     },
-    "Utrecht": {
-      "opmerkingen": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden, maar een vaststelling door deze gemeente is niet gevonden. Het dashboard toont daarom het landelijk kader; controleer bij de gemeente of omgevingsdienst.",
-      "bronDocument": "gmb-2024-428959",
-      "bronDocumentTitel": "Nota bodembeheer werkgebied ODRU (zonering provincie Utrecht)",
-      "bronDocumentDatum": "2024-10-10",
+    "Nissewaard": {
+      "opmerkingen": "Het college stelde op 11 februari 2020 lokale maximale waarden PFAS vast voor landbouw/natuur: PFOA 1,24 · PFOS 1,10 · overige PFAS 0,80 µg/kg ds. Die waren toen ruimer dan het landelijk kader, maar zijn nu strenger dan de huidige landelijke waarden (1,9 / 1,4 / 1,4). Een intrekking of aanpassing is niet gevonden. Het dashboard toont het landelijk kader; controleer bij de gemeente of DCMR.",
+      "bronDocument": "gmb-2020-65326",
+      "bronDocumentTitel": "Lokale maximale waarden PFAS Nissewaard",
+      "bronDocumentDatum": "2020-03-11",
       "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
-    },
-    "Utrechtse Heuvelrug": {
-      "opmerkingen": "Van de Nota bodembeheer werkgebied ODRU (met lokale maximale waarden per PFAS-zone) is voor deze gemeente alleen het ontwerp gevonden, geen vaststelling. Het dashboard toont daarom het landelijk kader; controleer bij de gemeente.",
-      "bronDocument": "gmb-2022-55407",
-      "bronDocumentTitel": "Ontwerp Nota bodembeheer werkgebied ODRU",
-      "bronDocumentDatum": "2022-02-09",
-      "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
-    },
-    "West Betuwe": {
-      "opmerkingen": "De gevonden Nota bodembeheer van West Betuwe (2020) bevat de latere PFOA-waarde van 2,8 voor de regio Rivierenland niet. Of een nieuwere versie is vastgesteld is niet gevonden; controleer bij de gemeente.",
-      "bronDocument": "gmb-2020-149574",
-      "bronDocumentTitel": "Nota bodembeheer",
-      "bronDocumentDatum": "2020-06-15",
-      "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
-    },
-    "West Maas en Waal": {
-      "opmerkingen": "De Nota bodembeheer regio Rivierenland noemt deze gemeente als deelnemer (PFOA landbouw/natuur 2,8 µg/kg ds voor grond uit de regio), maar een vaststellingsbesluit van deze gemeente is niet gevonden. Het dashboard toont daarom het landelijk kader; controleer bij de gemeente.",
-      "bronDocument": "gmb-2021-428289",
-      "bronDocumentTitel": "Nota bodembeheer regio Rivierenland",
-      "bronDocumentDatum": "2021-11-29",
-      "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
-    },
-    "Wijk bij Duurstede": {
-      "opmerkingen": "Van de Nota bodembeheer werkgebied ODRU (met lokale maximale waarden per PFAS-zone) is voor deze gemeente alleen het ontwerp gevonden, geen vaststelling. Het dashboard toont daarom het landelijk kader; controleer bij de gemeente.",
-      "bronDocument": "gmb-2021-457789",
-      "bronDocumentTitel": "Ontwerp Nota bodembeheer werkgebied ODRU",
-      "bronDocumentDatum": "2021-12-16",
-      "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
+      "geverifieerdOp": "2026-09-28"
     },
     "Woudenberg": {
-      "opmerkingen": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden, maar een vaststelling door deze gemeente is niet gevonden. Het dashboard toont daarom het landelijk kader; controleer bij de gemeente of omgevingsdienst.",
+      "opmerkingen": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden. Een vaststelling door deze gemeente is in de officiële bekendmakingen niet gevonden (nagezocht 2026-09-28); Leusden stelde dezelfde nota wel vast zonder aparte bekendmaking, dus dat bewijst niet dat die ontbreekt. Het dashboard toont het landelijk kader; controleer bij de gemeente of de RUD Utrecht.",
       "bronDocument": "gmb-2024-428959",
       "bronDocumentTitel": "Nota bodembeheer werkgebied ODRU (zonering provincie Utrecht)",
       "bronDocumentDatum": "2024-10-10",
       "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
-    },
-    "Zeist": {
-      "opmerkingen": "Van de Nota bodembeheer werkgebied ODRU (met lokale maximale waarden per PFAS-zone) is voor deze gemeente alleen het ontwerp gevonden, geen vaststelling. Het dashboard toont daarom het landelijk kader; controleer bij de gemeente.",
-      "bronDocument": "gmb-2022-8472",
-      "bronDocumentTitel": "Ontwerp Nota bodembeheer werkgebied ODRU",
-      "bronDocumentDatum": "2022-01-12",
-      "bronLink": null,
-      "geverifieerdOp": "2026-09-26"
+      "geverifieerdOp": "2026-09-28"
     }
   },
   "nagelezenZonderAfwijking": {
     "gmb-2026-384826": "Almere, ontwerp-omgevingsplan bodembeheer: de toepassingstabellen herhalen het landelijk kader (landbouw/natuur PFOS 1,4, PFOA 1,9, overige PFAS 1,4). De GenX-waarde 3 komt uit de tabel voor zeer bodemgevoelig gebruik (moestuin, speelplaats), niet uit een bodemfunctieklasse. Nagelezen 2026-09-26.",
-    "gmb-2024-31450": "Leiden, Nota bodembeheer 2023-2033: herhaalt het landelijk kader (\"elke andere PFAS-verbinding 1,40\"). Nagelezen 2026-09-26."
+    "gmb-2024-31450": "Leiden, Nota bodembeheer 2023-2033: herhaalt het landelijk kader (\"elke andere PFAS-verbinding 1,40\"). Nagelezen 2026-09-26.",
+    "gmb-2020-180108": "Aalsmeer, Beleidsregel PFAS (2019/2020): ingetrokken in 2023 (gmb-2024-45208); sindsdien geldt het landelijk kader. Nagelezen 2026-09-28.",
+    "gmb-2020-82747": "Amstelveen, Beleidsregel PFAS (2019/2020): ingetrokken in 2023 (gmb-2024-45175); sindsdien geldt het landelijk kader. Nagelezen 2026-09-28.",
+    "gmb-2020-83258": "Diemen, Beleidsregel PFAS (2019/2020): ingetrokken in 2023 (gmb-2023-564722); sindsdien geldt het landelijk kader. Nagelezen 2026-09-28.",
+    "gmb-2020-99808": "Ouder-Amstel, Beleidsregel PFAS (2019/2020): ingetrokken in 2023 (gmb-2023-540429); sindsdien geldt het landelijk kader. Nagelezen 2026-09-28.",
+    "gmb-2020-97965": "Uithoorn, Beleidsregel PFAS (2019/2020): ingetrokken in 2023 (gmb-2023-436424); sindsdien geldt het landelijk kader. Nagelezen 2026-09-28.",
+    "gmb-2019-45806": "Haarlemmermeer, Beleidsregel PFAS (2019/2020): ingetrokken in 2023 (gmb-2023-449855); sindsdien geldt het landelijk kader. Nagelezen 2026-09-28.",
+    "gmb-2023-399897": "Alphen-Chaam, Nota bodembeheer regio Midden- en West-Brabant: tabel 3 herhaalt het landelijk kader. De PFOS-waarden 10,1 / 7,2 / 3,8 gelden alleen voor projectgebied GOL/Haven Acht in Waalwijk. Nagelezen 2026-09-28.",
+    "gmb-2023-399895": "Baarle-Nassau, Nota bodembeheer regio Midden- en West-Brabant: tabel 3 herhaalt het landelijk kader. De PFOS-waarden 10,1 / 7,2 / 3,8 gelden alleen voor projectgebied GOL/Haven Acht in Waalwijk. Nagelezen 2026-09-28.",
+    "gmb-2023-71683": "Breda, Nota bodembeheer regio Midden- en West-Brabant: tabel 3 herhaalt het landelijk kader. De PFOS-waarden 10,1 / 7,2 / 3,8 gelden alleen voor projectgebied GOL/Haven Acht in Waalwijk. Nagelezen 2026-09-28.",
+    "gmb-2023-400072": "Gilze en Rijen, Nota bodembeheer regio Midden- en West-Brabant: tabel 3 herhaalt het landelijk kader. De PFOS-waarden 10,1 / 7,2 / 3,8 gelden alleen voor projectgebied GOL/Haven Acht in Waalwijk. Nagelezen 2026-09-28.",
+    "gmb-2022-364059": "Loon op Zand, Nota bodembeheer regio Midden- en West-Brabant: tabel 3 herhaalt het landelijk kader. De PFOS-waarden 10,1 / 7,2 / 3,8 gelden alleen voor projectgebied GOL/Haven Acht in Waalwijk. Nagelezen 2026-09-28.",
+    "gmb-2024-197246": "Moerdijk, Nota bodembeheer regio Midden- en West-Brabant: tabel 3 herhaalt het landelijk kader. De PFOS-waarden 10,1 / 7,2 / 3,8 gelden alleen voor projectgebied GOL/Haven Acht in Waalwijk. Nagelezen 2026-09-28.",
+    "gmb-2022-515426": "Steenbergen, Nota bodembeheer regio Midden- en West-Brabant: tabel 3 herhaalt het landelijk kader. De PFOS-waarden 10,1 / 7,2 / 3,8 gelden alleen voor projectgebied GOL/Haven Acht in Waalwijk. Nagelezen 2026-09-28.",
+    "gmb-2020-50343": "Eersel, Handreiking/tijdelijke achtergrondwaarden PFAS Noord-Brabant (2019/2020): achterhaald door het Tijdelijk handelingskader van juli 2020 en de Nota bodembeheer PFAS Noord-Brabant, die het landelijk kader volgt. Nagelezen 2026-09-28.",
+    "gmb-2020-51164": "Reusel-De Mierden, Handreiking/tijdelijke achtergrondwaarden PFAS Noord-Brabant (2019/2020): achterhaald door het Tijdelijk handelingskader van juli 2020 en de Nota bodembeheer PFAS Noord-Brabant, die het landelijk kader volgt. Nagelezen 2026-09-28.",
+    "gmb-2020-72412": "Roosendaal, Handreiking/tijdelijke achtergrondwaarden PFAS Noord-Brabant (2019/2020): achterhaald door het Tijdelijk handelingskader van juli 2020 en de Nota bodembeheer PFAS Noord-Brabant, die het landelijk kader volgt. Nagelezen 2026-09-28.",
+    "gmb-2020-99303": "Sint-Michielsgestel, Handreiking/tijdelijke achtergrondwaarden PFAS Noord-Brabant (2019/2020): achterhaald door het Tijdelijk handelingskader van juli 2020 en de Nota bodembeheer PFAS Noord-Brabant, die het landelijk kader volgt. Nagelezen 2026-09-28.",
+    "gmb-2020-137670": "Geertruidenberg, Handreiking/tijdelijke achtergrondwaarden PFAS Noord-Brabant (2019/2020): achterhaald door het Tijdelijk handelingskader van juli 2020 en de Nota bodembeheer PFAS Noord-Brabant, die het landelijk kader volgt. Nagelezen 2026-09-28.",
+    "gmb-2019-315862": "Bergen op Zoom, Handreiking/tijdelijke achtergrondwaarden PFAS Noord-Brabant (2019/2020): achterhaald door het Tijdelijk handelingskader van juli 2020 en de Nota bodembeheer PFAS Noord-Brabant, die het landelijk kader volgt. Nagelezen 2026-09-28.",
+    "gmb-2021-379708": "Tilburg, Nota bodembeheer 2021: de lokale waarden landbouw/natuur (PFOA 0,84, PFOS 1,56) zijn vervangen; de Bodemkwaliteitskaart 2024 (gmb-2024-47591) past voor PFAS de landelijke waarden toe. Nagelezen 2026-09-28.",
+    "gmb-2020-105498": "Leeuwarden, Zicht op Grond 2020: volgt de landelijke norm (de bijlage noemt de oude landelijke achtergrondwaarden 0,9/0,8); de versie van 2021 verwijst naar 1,4/1,9. Nagelezen 2026-09-28.",
+    "gmb-2020-208959": "Losser, Beleidsregels PFAS regio Twente 2020: vervallen met Nota bodembeheer regio Twente 2.1 (gmb-2026-327744), die het handelingskader volgt. Nagelezen 2026-09-28.",
+    "gmb-2020-308337": "Scherpenzeel, beleidsregels PFAS De Vallei 2020: vervangen door Nota bodembeheer Regio De Vallei 2023 (gmb-2023-337424), die de dubbele toets van het landelijk kader volgt. Nagelezen 2026-09-28.",
+    "gmb-2020-195636": "Zoetermeer, Beleidsregel PFAS 2020: vervangen door de Nota bodembeheer Zoetermeer 2022 (gmb-2022-547675); de toepassingseis voor PFAS volgt het generieke kader. Nagelezen 2026-09-28."
   }
 }
