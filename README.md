@@ -367,7 +367,7 @@ Nagelezen (2026-09-26), met de besluiten in `pfas_normen.json`:
 | Helmond | Helmond | per bodemkwaliteitszone |
 | Rivierenland | Culemborg, Maasdriel, Neder-Betuwe, Tiel, Zaltbommel, West Betuwe, West Maas en Waal | PFOA 2,8 voor grond uit de regio |
 | Utrecht zone B3 | Bunnik, Houten, Renswoude, Rhenen, Soest, Stichtse Vecht, Veenendaal, De Bilt, Leusden, Utrechtse Heuvelrug, Wijk bij Duurstede, Zeist | PFOS 1,8 · PFOA 2,9 binnen de zone |
-| Utrecht zone B2 | IJsselstein, Oudewater | PFOS 1,8 · PFOA 5,2 binnen de zone |
+| Utrecht zone B2 | IJsselstein, Oudewater, Montfoort | PFOS 1,8 · PFOA 5,2 binnen de zone |
 | Utrecht, meerdere zones | Woerden, Vijfheerenlanden | per zone |
 | Utrecht (gemeente) | Utrecht | PFOS 2,19 · PFOA 4,35 (eigen beleid 2020, bovenste meter) |
 | Zuid-Kennemerland-IJmond | Beverwijk, Bloemendaal, Heemskerk, Heemstede, Uitgeest, Velsen, Zandvoort | PFOS 2,6 (bovengrond) |
@@ -391,9 +391,9 @@ Breda, Eersel, Geertruidenberg, Gilze en Rijen, Loon op Zand, Reusel-De Mierden,
 Roosendaal, Sint-Michielsgestel, Steenbergen en Tilburg (de PFOS 10,1 in de regionale nota
 geldt alleen voor Waalwijk GOL/Haven Acht), en Leeuwarden, Losser, Scherpenzeel en
 Zoetermeer. Twijfel, op `mogelijkAfwijkend` met de reden: Amersfoort, Baarn, Bunschoten,
-Eemnes, Lopik, Woudenberg (geen vaststelling gevonden), Montfoort (vaststelling zonder
-inhoud), De Ronde Venen en Buren (alleen ontwerp) en Nissewaard (lokale waarden van 2020,
-nu strenger dan landelijk).
+Eemnes, Lopik, Woudenberg (geen vaststelling gevonden) en Buren (alleen ontwerp). Na controle
+in het register lokale regelgeving: Montfoort blijkt de ODRU-nota te hebben vastgesteld (zone B2);
+De Ronde Venen en Nissewaard volgen het landelijk kader.
 
 Let op: de sweep vindt intrekkingsbesluiten niet, omdat die geen bodemterm bevatten. De
 zes ingetrokken beleidsregels hierboven stonden daardoor nog als signaal in het corpus.

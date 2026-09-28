@@ -1050,7 +1050,7 @@ test('de nagelezen getallen staan zoals in de besluiten', () => {
     ['Maasdriel', 'pfoa', 'landbouwNatuur', 2.8], ['Tiel', 'pfoa', 'landbouwNatuur', 2.8],
     // Beleidsnota PFAS Utrecht, tabel 8 (Soest) / 17 (ODRU): zone B3 en B2
     ['Houten', 'pfoa', 'landbouwNatuur', 2.9], ['Houten', 'pfos', 'landbouwNatuur', 1.8],
-    ['IJsselstein', 'pfoa', 'landbouwNatuur', 5.2],
+    ['IJsselstein', 'pfoa', 'landbouwNatuur', 5.2], ['Montfoort', 'pfoa', 'landbouwNatuur', 5.2],
     // Nota bodembeheer OD IJmond, tabel 7
     ['Velsen', 'pfos', 'landbouwNatuur', 2.6], ['Velsen', 'pfoa', 'landbouwNatuur', 1.9],
     // Aanvulling Nota bodembeheer Utrecht 2020 (exb-2020-52621), tabel 1
