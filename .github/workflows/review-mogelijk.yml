@@ -10,6 +10,7 @@ on:
   pull_request:
     paths:
       - 'pfasApi_code/review-mogelijk.js'
+      - 'pfasApi_code/review-tweede-ronde.js'
       - '.github/workflows/review-mogelijk.yml'
 
 permissions:
@@ -32,6 +33,9 @@ jobs:
       - run: npm ci
       - name: Bewijs per gemeente
         run: node review-mogelijk.js --uit=/tmp/review.json
+      # Gerichte tweede ronde voor de gevallen die de eerste niet kon beslissen.
+      - name: Tweede ronde
+        run: node review-tweede-ronde.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
