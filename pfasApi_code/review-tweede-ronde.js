@@ -22,7 +22,7 @@ const { toDocId } = require('./docId');
 const docUrl = (id) => `https://zoek.officielebekendmakingen.nl/${id}.html`;
 
 // Per gemeente: welke documenten, en waar in die documenten de beslissing staat.
-const GEVALLEN = [
+const GEVALLEN_2 = [
   // Utrecht: heeft de gemeente de provinciale PFAS-zonering met LMW vastgesteld?
   { gemeente: 'Utrechtse Heuvelrug', docs: ['gmb-2022-506420', 'gmb-2022-502317'], zoek: /lokale maximale waarde|PFAS[- ]zone|B3|vaststel/i },
   { gemeente: 'Wijk bij Duurstede', docs: ['gmb-2022-531251'], zoek: /lokale maximale waarde|PFAS[- ]zone|B3|vaststel/i },
@@ -70,6 +70,37 @@ const GEVALLEN = [
   { gemeente: 'Scherpenzeel', docs: ['gmb-2023-337424', 'gmb-2026-167995'], zoek: /PFAS.{0,160}(µg|μg)|toepassingseis.{0,80}PFAS/i },
   { gemeente: 'Hardenberg', docs: ['gmb-2025-568235'], zoek: /bodembeheergebied|4\.5|30 µg/i }
 ];
+
+// Derde ronde: wat de tweede ronde nog openliet, plus buurgemeenten die
+// onder dezelfde regionale nota vallen maar nu als 'landelijk kader' staan.
+const GEVALLEN_3 = [
+  { gemeente: 'Utrecht', docs: ['gmb-2020-255720', 'gmb-2020-83142'], zoek: /PFOA|PFOS|lokale maximale waarde/i },
+  { gemeente: 'Leusden', docs: ['gmb-2022-576422'], zoek: /PFAS|ODRU|lokale maximale waarde|B3/i },
+  { gemeente: 'Tiel', referentie: true, docs: ['gmb-2021-355457'], zoek: /4\.3\.7 Lokale Maximale Waarden toepassen PFAS|Tabel 4\.2/ },
+  { gemeente: 'Reimerswaal', docs: ['gmb-2024-37380'], zoek: /Artikel (9|10) \(/ },
+  // Zoetermeer: neemt de Nota 2022 de lokale PFAS-toepassingseis (PFOS 2,6 · PFOA 1,55) over?
+  { gemeente: 'Zoetermeer', docs: ['gmb-2022-547675'], zoek: /toepassingseis.{0,200}PFAS|PFAS.{0,200}toepassingseis|beleidsregel PFAS|ACN/i },
+  // Regio Achterhoek: wie heeft de nota met §2.5.11 vastgesteld?
+  { gemeente: 'Aalten', docs: [], zoek: null },
+  { gemeente: 'Berkelland', docs: [], zoek: null },
+  { gemeente: 'Bronckhorst', docs: [], zoek: null },
+  { gemeente: 'Doetinchem', docs: [], zoek: null },
+  { gemeente: 'Oost Gelre', docs: [], zoek: null },
+  { gemeente: 'Oude IJsselstreek', docs: [], zoek: null },
+  // Regio Bevelanden en Tholen: zelfde PFAS-artikelen als Tholen/Reimerswaal?
+  { gemeente: 'Borsele', docs: [], zoek: null },
+  { gemeente: 'Goes', docs: [], zoek: null },
+  { gemeente: 'Kapelle', docs: [], zoek: null },
+  { gemeente: 'Noord-Beveland', docs: [], zoek: null }
+];
+
+// Bij buurgemeenten zonder vooraf bekend document: zoek in hun eigen nota's
+// naar de PFAS-artikelen.
+const AUTO_ZOEK = /PFAS.{0,200}(µg|μg)|2\.5\.11|achtergrondwaarden mag|lokale maximale waarde/i;
+const AUTO_TITEL = /nota bodembeheer|bodemkwaliteitskaart|PFAS|bodembeleid/i;
+
+const RONDE = (process.argv.find(a => a.startsWith('--ronde=')) || '--ronde=2').split('=')[1];
+const GEVALLEN = RONDE === '3' ? GEVALLEN_3 : GEVALLEN_2;
 
 const VENSTER = 1400;
 const MAX_PER_DOC = 9000;
@@ -120,10 +151,14 @@ async function main() {
     console.log(`Alle eigen PFAS/bodem-publicaties (${eigen.length}):`);
     for (const p of eigen) console.log(`   ${p.date}  ${p.identifier}  ${p.title}`);
 
-    for (const id of g.docs) {
+    // Geen bekend document: neem de eigen nota's/kaarten (max. 3, recentste eerst).
+    const docs = g.docs.length ? g.docs
+      : eigen.filter(p => AUTO_TITEL.test(p.title || '')).slice(-3).map(p => p.identifier);
+    const zoek = g.zoek || AUTO_ZOEK;
+    for (const id of docs) {
       const tekst = await haalDocumentTekst(docUrl(id));
       console.log(`  -- ${id}: ${tekst ? tekst.length : 0} tekens | ${titelVan(tekst) || ''}`);
-      passages(tekst, g.zoek).forEach((p, i) => console.log(`     [${i + 1}] ${p}`));
+      passages(tekst, zoek).forEach((p, i) => console.log(`     [${i + 1}] ${p}`));
     }
   }
 }
