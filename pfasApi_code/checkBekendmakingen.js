@@ -886,6 +886,10 @@ function leidGemeenteAf({ docId, bron, curatie, mogelijk, bronLinkStandaard, van
   };
   const kader = () => ({ pfos: { ...LANDELIJK.pfos }, pfoa: { ...LANDELIJK.pfoa }, genx: { ...LANDELIJK.genx } });
   const docLink = (id) => !id ? null : /^https?:/.test(id) ? id : `https://zoek.officielebekendmakingen.nl/${id}.html`;
+  // Een kale homepage ("https://www.odijmond.nl/") helpt niemand die grond wil
+  // afvoeren en telt in de audit als zwakke bronlink. Staat die in de curatie,
+  // dan gaat de pagina uit gemeente_mapping.json voor.
+  const isHomepage = (u) => { try { return ['', '/'].includes(new URL(u).pathname); } catch { return false; } };
 
   if (curatie) {
     return {
@@ -894,7 +898,8 @@ function leidGemeenteAf({ docId, bron, curatie, mogelijk, bronLinkStandaard, van
       herkomst: 'curatie',
       tereviewen: false,
       bronType: 'curatie',
-      bronLink: curatie.bronLink || bronLinkStandaard || docLink(curatie.bronDocument),
+      bronLink: (curatie.bronLink && !isHomepage(curatie.bronLink) ? curatie.bronLink : null) ||
+        bronLinkStandaard || curatie.bronLink || docLink(curatie.bronDocument),
       bronDocument: curatie.bronDocument || null,
       bronDocumentLink: docLink(curatie.bronDocument),
       bronDocumentTitel: curatie.bronDocumentTitel || null,

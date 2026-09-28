@@ -663,6 +663,26 @@ test('herbouw zet de bronlink uit gemeente_mapping bij een aanname', () => {
   assert.notStrictEqual(bronLinkUitMapping('Bergen (NH)'), bronLinkUitMapping('Bergen (L)'));
 });
 
+test('een kale homepage in de curatie wint niet van de pagina uit de mapping', () => {
+  // De curatie gaf zeven IJmond-gemeenten "https://www.odijmond.nl/" als bron;
+  // de audit telde dat terecht als zwakke bronlink.
+  const { leidGemeenteAf } = require('../checkBekendmakingen');
+  const normen = require('../pfas_normen.json');
+  const pagina = 'https://www.odijmond.nl/thema/bodem/pfas/';
+  const curatie = { ...Object.values(normen.afwijkend)[0], bronLink: 'https://www.odijmond.nl/' };
+  const uit = leidGemeenteAf({ docId: 'velsen', curatie, bronLinkStandaard: pagina, vandaag: '2026-09-28' });
+  assert.strictEqual(uit.bronLink, pagina);
+
+  const echt = leidGemeenteAf({ docId: 'velsen', curatie: { ...curatie, bronLink: 'https://example.org/besluit' },
+    bronLinkStandaard: pagina, vandaag: '2026-09-28' });
+  assert.strictEqual(echt.bronLink, 'https://example.org/besluit', 'een echte curatielink blijft voorgaan');
+
+  for (const [g, c] of Object.entries(normen.afwijkend)) {
+    if (!c || !c.bronLink) continue;
+    assert.ok(!['', '/'].includes(new URL(c.bronLink).pathname), `${g} heeft alleen een homepage als bron`);
+  }
+});
+
 test('beoordeelAudit meldt een watermerk dat achterblijft', () => {
   const { beoordeelAudit } = require('../audit');
   const basis = { ontbrekend: 0, verweesd: 0, dubbeleIds: 0, verdachteWaarden: 0,
