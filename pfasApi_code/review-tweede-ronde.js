@@ -78,6 +78,8 @@ const GEVALLEN_3 = [
   { gemeente: 'Leusden', docs: ['gmb-2022-576422'], zoek: /PFAS|ODRU|lokale maximale waarde|B3/i },
   { gemeente: 'Tiel', referentie: true, docs: ['gmb-2021-355457'], zoek: /4\.3\.7 Lokale Maximale Waarden toepassen PFAS|Tabel 4\.2/ },
   { gemeente: 'Reimerswaal', docs: ['gmb-2024-37380'], zoek: /Artikel (9|10) \(/ },
+  // Zoetermeer: neemt de Nota 2022 de lokale PFAS-toepassingseis (PFOS 2,6 · PFOA 1,55) over?
+  { gemeente: 'Zoetermeer', docs: ['gmb-2022-547675'], zoek: /toepassingseis.{0,200}PFAS|PFAS.{0,200}toepassingseis|beleidsregel PFAS|ACN/i },
   // Regio Achterhoek: wie heeft de nota met §2.5.11 vastgesteld?
   { gemeente: 'Aalten', docs: [], zoek: null },
   { gemeente: 'Berkelland', docs: [], zoek: null },
