@@ -529,6 +529,30 @@
       "bronDocumentDatum": "2021-11-29",
       "geverifieerdOp": "2026-09-28"
     },
+    "Montfoort": {
+      "regio": "Utrecht, PFAS-zone B2",
+      "pfos": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.8
+      },
+      "pfoa": {
+        "wonen": 7.0,
+        "industrie": 7.0,
+        "landbouwNatuur": 5.2
+      },
+      "genx": {
+        "wonen": 3.0,
+        "industrie": 3.0,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer werkgebied ODRU, vastgesteld door de gemeenteraad op 26 september 2022 (tekst in de bijlage exb-2022-56942): voor grond die binnen dezelfde PFAS-zone wordt hergebruikt gelden voor landbouw/natuur (bovengrond 0–0,5 m-mv) lokale maximale waarden: zone B2, PFOS 1,8 · PFOA 5,2 · overige PFAS 1,4 µg/kg ds (tabel 17). Tussen zones en voor grond van buiten de provincie gelden strengere waarden (zie de nota). Wonen en industrie volgen het landelijk kader.",
+      "bronLink": null,
+      "bronDocument": "gmb-2022-457438",
+      "bronDocumentTitel": "Nota bodembeheer werkgebied ODRU, gemeente Montfoort",
+      "bronDocumentDatum": "2022-10-13",
+      "geverifieerdOp": "2026-09-28"
+    },
     "Neder-Betuwe": {
       "regio": "Rivierenland",
       "pfos": {
@@ -1478,14 +1502,6 @@
       "bronLink": null,
       "geverifieerdOp": "2026-09-28"
     },
-    "De Ronde Venen": {
-      "opmerkingen": "De Ronde Venen hoort bij het werkgebied ODRU, maar alleen een ontwerp van een eigen Nota bodembeheer (2022) is gevonden, geen vaststelling. Het dashboard toont het landelijk kader; controleer bij de gemeente.",
-      "bronDocument": "gmb-2022-59141",
-      "bronDocumentTitel": "Ontwerpnota Bodembeheer De Ronde Venen",
-      "bronDocumentDatum": "2022-02-10",
-      "bronLink": null,
-      "geverifieerdOp": "2026-09-28"
-    },
     "Eemnes": {
       "opmerkingen": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden. Een vaststelling door deze gemeente is in de officiële bekendmakingen niet gevonden (nagezocht 2026-09-28); Leusden stelde dezelfde nota wel vast zonder aparte bekendmaking, dus dat bewijst niet dat die ontbreekt. Het dashboard toont het landelijk kader; controleer bij de gemeente of de RUD Utrecht.",
       "bronDocument": "gmb-2024-428959",
@@ -1499,22 +1515,6 @@
       "bronDocument": "gmb-2024-428959",
       "bronDocumentTitel": "Nota bodembeheer werkgebied ODRU (zonering provincie Utrecht)",
       "bronDocumentDatum": "2024-10-10",
-      "bronLink": null,
-      "geverifieerdOp": "2026-09-28"
-    },
-    "Montfoort": {
-      "opmerkingen": "De gemeenteraad heeft op 26 september 2022 een 'Nota bodembeheer' vastgesteld; de bekendmaking noemt de inhoud niet. Eerder lag de Nota bodembeheer werkgebied ODRU hier in ontwerp ter inzage, dus vermoedelijk is dat die nota (Montfoort ligt in PFAS-zone B2: landbouw/natuur PFOS 1,8 · PFOA 5,2). Niet bevestigd; het dashboard toont het landelijk kader.",
-      "bronDocument": "gmb-2022-457438",
-      "bronDocumentTitel": "Nota Bodembeheer (vaststelling)",
-      "bronDocumentDatum": "2022-10-13",
-      "bronLink": null,
-      "geverifieerdOp": "2026-09-28"
-    },
-    "Nissewaard": {
-      "opmerkingen": "Het college stelde op 11 februari 2020 lokale maximale waarden PFAS vast voor landbouw/natuur: PFOA 1,24 · PFOS 1,10 · overige PFAS 0,80 µg/kg ds. Die waren toen ruimer dan het landelijk kader, maar zijn nu strenger dan de huidige landelijke waarden (1,9 / 1,4 / 1,4). Een intrekking of aanpassing is niet gevonden. Het dashboard toont het landelijk kader; controleer bij de gemeente of DCMR.",
-      "bronDocument": "gmb-2020-65326",
-      "bronDocumentTitel": "Lokale maximale waarden PFAS Nissewaard",
-      "bronDocumentDatum": "2020-03-11",
       "bronLink": null,
       "geverifieerdOp": "2026-09-28"
     },
@@ -1571,6 +1571,9 @@
     "gmb-2020-308337": "Scherpenzeel, beleidsregels PFAS De Vallei 2020: vervangen door Nota bodembeheer Regio De Vallei 2023 (gmb-2023-337424), die de dubbele toets van het landelijk kader volgt. Nagelezen 2026-09-28.",
     "gmb-2020-195636": "Zoetermeer, Beleidsregel PFAS 2020: vervangen door de Nota bodembeheer Zoetermeer 2022 (gmb-2022-547675); de toepassingseis voor PFAS volgt het generieke kader. Nagelezen 2026-09-28.",
     "gmb-2019-198494": "Aalsmeer, Beleidsregels PFAS 2019: vervangen door de Beleidsregel PFAS 2020 (gmb-2020-180108), die in 2023 is ingetrokken (gmb-2024-45208); sindsdien geldt het landelijk kader. Nagelezen 2026-09-28.",
-    "gmb-2019-314777": "Steenbergen, Handreiking toepassing PFAS Noord-Brabant (2019): ingetrokken in december 2020 (gmb-2020-341413) bij vaststelling van de Nota bodembeheer PFAS Noord-Brabant, die het landelijk kader volgt. Nagelezen 2026-09-28."
+    "gmb-2019-314777": "Steenbergen, Handreiking toepassing PFAS Noord-Brabant (2019): ingetrokken in december 2020 (gmb-2020-341413) bij vaststelling van de Nota bodembeheer PFAS Noord-Brabant, die het landelijk kader volgt. Nagelezen 2026-09-28.",
+    "gmb-2022-59141": "De Ronde Venen, Ontwerpnota Bodembeheer (2022): nooit vastgesteld. Volgens het register lokale regelgeving geldt nog de Nota Bodembeheer regio Noordwest-Utrecht (2015, CVDR374943), zonder PFAS-beleid; de ODRU-nota is hier niet vastgesteld. Landelijk kader. Nagelezen 2026-09-28.",
+    "gmb-2020-65326": "Nissewaard, lokale maximale waarden PFAS (2020, PFOA 1,24 · PFOS 1,10 · overig 0,80): de geldende Nota bodembeheer Nissewaard (CVDR627898) volgt het handelingskader en neemt wijzigingen daarvan over; de waarden van 2020 staan niet als geldende regeling in het register. Landelijk kader. Nagelezen 2026-09-28.",
+    "gmb-2020-43530": "Nissewaard, lokale maximale waarden PFAS (2020, PFOA 1,24 · PFOS 1,10 · overig 0,80): de geldende Nota bodembeheer Nissewaard (CVDR627898) volgt het handelingskader en neemt wijzigingen daarvan over; de waarden van 2020 staan niet als geldende regeling in het register. Landelijk kader. Nagelezen 2026-09-28."
   }
 }
