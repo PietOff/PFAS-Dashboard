@@ -147,8 +147,24 @@ const titelVan = (tekst) => {
   return m ? m[1].slice(0, 160) : null;
 };
 
+// De SRU van overheid.nl reageert soms even niet (timeout); een nieuwe poging
+// na een paar seconden lukt dan meestal. Zelfde wachttijden als check-bronnen.js.
+const SRU_WACHTTIJDEN_MS = [5000, 15000, 30000];
+
+async function zoekMetHerkansing() {
+  for (let poging = 0; ; poging++) {
+    try {
+      return await zoekBekendmakingen({ vanaf: '2019-01-01', maxRecords: 3000 });
+    } catch (err) {
+      if (poging >= SRU_WACHTTIJDEN_MS.length) throw err;
+      console.error(`SRU: ${err.message}; nieuwe poging over ${SRU_WACHTTIJDEN_MS[poging] / 1000} s`);
+      await new Promise(res => setTimeout(res, SRU_WACHTTIJDEN_MS[poging]));
+    }
+  }
+}
+
 async function main() {
-  const { records } = await zoekBekendmakingen({ vanaf: '2019-01-01', maxRecords: 3000 });
+  const { records } = await zoekMetHerkansing();
   const perGemeente = new Map();
   for (const r of records) {
     const id = toDocId(r.gemeente);
