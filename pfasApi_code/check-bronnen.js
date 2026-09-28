@@ -29,6 +29,7 @@ const { MIN_GEMEENTEN, MAX_GEMEENTEN } = require('./gemeentelijst');
 const alsJson = process.argv.includes('--json');
 
 const SITE = 'https://pfas-dashboard-nl-a808d.web.app';
+const FUNCTIES = 'https://us-central1-pfas-dashboard-nl-a808d.cloudfunctions.net';
 const UA = 'PFASDashboard/1.0 (bronbewaking)';
 
 // Niet hier hardcoderen: het endpoint komt uit de productiecode, zodat deze
@@ -64,7 +65,12 @@ async function haal(url, { type = 'json', timeout = 30000 } = {}) {
  * anders zou deze controle wekelijks vals alarm slaan en binnen een maand
  * genegeerd worden.
  */
-async function sruProbe(query, { pogingen = 3, basis = SRU_IN_GEBRUIK, versie = '1.2' } = {}) {
+// Wachttijd vóór de 2e, 3e en 4e poging. Samen bijna een minuut: een korte
+// storing bij KOOP (zoals de 503 van 21 september 2026, terwijl het twee weken
+// eerder gewoon werkte) is daarmee overbrugd.
+const SRU_WACHTTIJDEN_MS = [5000, 15000, 30000];
+
+async function sruProbe(query, { pogingen = SRU_WACHTTIJDEN_MS.length + 1, basis = SRU_IN_GEBRUIK, versie = '1.2' } = {}) {
   const url = `${basis}?version=${versie}&operation=searchRetrieve&x-connection=oep` +
     `&startRecord=1&maximumRecords=1&query=${encodeURIComponent(query)}`;
 
@@ -76,13 +82,18 @@ async function sruProbe(query, { pogingen = 3, basis = SRU_IN_GEBRUIK, versie = 
       r = await haal(url, { type: 'text' });
     } catch (err) {
       laatste = `niet bereikbaar (${err.code || err.message})`;
+      if (poging < pogingen) {
+        await new Promise(res => setTimeout(res, SRU_WACHTTIJDEN_MS[poging - 1] || 30000));
+      }
       continue;
     }
 
     if (r.status >= 500) {
       laatste = `HTTP ${r.status}`;
       // Even wachten; een overbelaste index herstelt vaak binnen seconden.
-      await new Promise(res => setTimeout(res, 2000 * poging));
+      if (poging < pogingen) {
+        await new Promise(res => setTimeout(res, SRU_WACHTTIJDEN_MS[poging - 1] || 30000));
+      }
       continue;
     }
     if (r.status !== 200) return { ok: false, fout: `HTTP ${r.status}` };
@@ -366,6 +377,30 @@ const CONTROLES = [
         return { ok: false, detail: `${zonderNormen.length} van de ${lijst.length} gemeenten zonder bruikbare PFOS-waarde` };
       }
       return { ok: true, detail: `${lijst.length} gemeenten met normen` };
+    }
+  },
+
+  {
+    naam: 'Healthcheck dataset en sweep',
+    waarom: 'dekking, dubbelen, verdachte waarden en of de sweep bijblijft',
+    async run() {
+      // Dezelfde audit als de dagelijkse controle, maar die schrijft alleen naar
+      // Cloud Logging en Firestore, waar niemand uit zichzelf kijkt. Hier komt
+      // hij in het wekelijkse rapport en maakt hij de controle rood.
+      const r = await haal(`${FUNCTIES}/healthCheck`, { timeout: 180000 });
+      const d = r.data || {};
+      if (r.status === 200 && d.gezond) {
+        const s = d.samenvatting || {};
+        return {
+          ok: true,
+          detail: `${s.documentenInFirestore} gemeenten, dekking ${s.dekkingProcent}%, ` +
+            `sweep ${s.sweepDagenGeleden} dagen geleden, ${s.metAfwijkendBeleid} met afwijkend beleid`
+        };
+      }
+      if (Array.isArray(d.problemen) && d.problemen.length) {
+        return { ok: false, detail: d.problemen.join(' | ') };
+      }
+      return { ok: false, detail: d.fout ? `faalt: ${d.fout}` : `HTTP ${r.status}` };
     }
   },
 

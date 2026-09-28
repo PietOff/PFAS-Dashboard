@@ -101,6 +101,15 @@ jobs:
             if (d.samenvatting) console.log('samenvatting:', JSON.stringify(d.samenvatting, null, 1));
             if (d.resultaat)   console.log('resultaat:',   JSON.stringify(d.resultaat, null, 1));
             if (d.modus)       console.log('modus:', d.modus, '| dubbelen:', d.gemeentenMetDubbelen, '| te verwijderen:', d.documentenTeVerwijderen);
+            const r = d.resultaat;
+            if (r && r.volledig === false) {
+              const reden = r.gestopt === 'tijd' ? 'het tijdsbudget was op'
+                : r.gestopt === 'limiet' ? 'de limiet bij max was bereikt'
+                : r.mislukt + ' publicatie(s) mislukten';
+              const tekst = 'Nog niet alles verwerkt: ' + reden + '. Het watermerk is niet opgeschoven, dus er gaat niets verloren. Start de sweep opnieuw tot volledig: true.';
+              console.log('::warning::' + tekst);
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, '\n> ' + tekst + '\n');
+            }
           " || true
 
           # 408/504 = de functie draaide nog toen de 9 minuten om waren. Verwerkte

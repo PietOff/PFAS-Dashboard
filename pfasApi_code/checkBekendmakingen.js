@@ -757,6 +757,16 @@ async function checkOfficieleBekendmakingen(db, dagenTerug = 7) {
 
 const CONFIG_DOC = 'bekendmakingenSweep';
 
+// Publicaties die niet verwerkt konden worden, met het aantal pogingen. Apart
+// van pfasDocumenten, zodat de rest van de code daar alleen echte documenten
+// tegenkomt.
+const MISLUKT_COLLECTIE = 'sweepMislukt';
+const MAX_POGINGEN = 3;
+
+// De functies hebben 540 seconden. Eén document kan met fetch, AI-call en pauze
+// ruim een halve minuut duren, en herbouwAfwijkingen heeft ook tijd nodig.
+const SWEEP_TIJDSBUDGET_MS = 7 * 60 * 1000;
+
 /**
  * Verwerkt één publicatie: ophalen, AI-extractie, opslaan in pfasDocumenten.
  * Slaat over als het document al verwerkt is (tenzij forceer=true).
@@ -876,6 +886,10 @@ function leidGemeenteAf({ docId, bron, curatie, mogelijk, bronLinkStandaard, van
   };
   const kader = () => ({ pfos: { ...LANDELIJK.pfos }, pfoa: { ...LANDELIJK.pfoa }, genx: { ...LANDELIJK.genx } });
   const docLink = (id) => !id ? null : /^https?:/.test(id) ? id : `https://zoek.officielebekendmakingen.nl/${id}.html`;
+  // Een kale homepage ("https://www.odijmond.nl/") helpt niemand die grond wil
+  // afvoeren en telt in de audit als zwakke bronlink. Staat die in de curatie,
+  // dan gaat de pagina uit gemeente_mapping.json voor.
+  const isHomepage = (u) => { try { return ['', '/'].includes(new URL(u).pathname); } catch { return false; } };
 
   if (curatie) {
     return {
@@ -884,7 +898,8 @@ function leidGemeenteAf({ docId, bron, curatie, mogelijk, bronLinkStandaard, van
       herkomst: 'curatie',
       tereviewen: false,
       bronType: 'curatie',
-      bronLink: curatie.bronLink || bronLinkStandaard || docLink(curatie.bronDocument),
+      bronLink: (curatie.bronLink && !isHomepage(curatie.bronLink) ? curatie.bronLink : null) ||
+        bronLinkStandaard || curatie.bronLink || docLink(curatie.bronDocument),
       bronDocument: curatie.bronDocument || null,
       bronDocumentLink: docLink(curatie.bronDocument),
       bronDocumentTitel: curatie.bronDocumentTitel || null,
@@ -960,6 +975,27 @@ function leidGemeenteAf({ docId, bron, curatie, mogelijk, bronLinkStandaard, van
  *   'landelijk-kader-aanname' - geen document gevonden; landelijk kader aangenomen
  *   'handmatig'               - handmatig overschreven via de Google Sheet
  */
+const gemeenteMapping = require('./gemeente_mapping.json');
+// In gemeente_mapping.json staat "Bergen (NH.)" en "Hengelo", in Firestore
+// "Bergen (NH)" en "Hengelo (O)". Eerst exact, dan zonder punten, dan zonder
+// toevoeging tussen haakjes — dat laatste alleen als die naam uniek is.
+// Dezelfde regels als idVoorNaam() in public/index.html.
+const zonderPunten = (n) => String(n).toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
+const kaleNaam = (n) => zonderPunten(String(n).replace(/\s*\([^)]*\)\s*$/, ''));
+const mappingOpNaam = new Map(Object.entries(gemeenteMapping).map(([k, v]) => [zonderPunten(k), v]));
+const mappingKaal = (() => {
+  const m = new Map();
+  for (const [k, v] of Object.entries(gemeenteMapping)) {
+    const kk = kaleNaam(k);
+    m.set(kk, m.has(kk) ? null : v);
+  }
+  return m;
+})();
+const bronLinkUitMapping = (naam) => {
+  if (!naam) return null;
+  return mappingOpNaam.get(zonderPunten(naam)) || mappingKaal.get(kaleNaam(naam)) || null;
+};
+
 async function herbouwAfwijkingen(db) {
   const docs = await db.collection('pfasDocumenten').get();
 
@@ -999,7 +1035,12 @@ async function herbouwAfwijkingen(db) {
     // Een bronlink die naar een gemeenteblad wees hoort niet te blijven
     // staan als dat gemeenteblad niet meer als bron geldt.
     const oudeLinkIsDocument = /officielebekendmakingen|repository\.overheid\.nl/.test(bestaand.bronLink || '');
-    const bronLinkStandaard = standaardLink.get(doc.id) || (oudeLinkIsDocument ? null : bestaand.bronLink);
+    // standaardLink gaat via toDocId en mist daardoor "Bergen (NH)" tegenover
+    // "Bergen (NH.)" en "Hengelo (O)" tegenover "Hengelo"; bronLinkUitMapping
+    // vangt die spellingsverschillen op.
+    const bronLinkStandaard = standaardLink.get(doc.id) ||
+      bronLinkUitMapping(bestaand.gemeente || doc.id) ||
+      (oudeLinkIsDocument ? null : bestaand.bronLink);
 
     const data = leidGemeenteAf({
       docId: doc.id,
@@ -1035,22 +1076,40 @@ async function herbouwAfwijkingen(db) {
  *   vorige geslaagde run. Bij een backfill zet je dit expliciet, bijv. '2019-01-01'.
  * @param {boolean} [opties.forceer] - alle documenten opnieuw door de AI halen
  * @param {number} [opties.maxDocumenten] - rem op het aantal AI-calls per run
+ * @param {number} [opties.tijdsbudgetMs] - na zoveel ms geen nieuwe documenten
+ *   meer oppakken, zodat herbouwAfwijkingen en het watermerk nog binnen de
+ *   functietimeout passen
  */
-async function sweepBekendmakingen(db, { vanaf, forceer = false, maxDocumenten = 200 } = {}) {
+async function sweepBekendmakingen(db, {
+  vanaf,
+  forceer = false,
+  maxDocumenten = 200,
+  tijdsbudgetMs = SWEEP_TIJDSBUDGET_MS,
+  // Alleen voor de tests: de echte functies doen netwerk- en AI-calls.
+  _zoek = zoekBekendmakingen,
+  _verwerk = verwerkPublicatie,
+  _herbouw = herbouwAfwijkingen,
+  _nu = Date.now
+} = {}) {
+  const begin = _nu();
   const configRef = db.collection('config').doc(CONFIG_DOC);
+  const mislukRef = db.collection(MISLUKT_COLLECTIE);
 
-  if (!vanaf) {
-    const cfg = await configRef.get();
-    // Watermerk in plaats van een vast venster van 7 dagen: als een run faalt of
-    // overgeslagen wordt, ontstaat er anders een gat dat nooit meer wordt gedicht.
-    vanaf = cfg.exists && cfg.data().laatsteGeslaagdeRun
-      ? cfg.data().laatsteGeslaagdeRun
-      : '2019-01-01';
-  }
+  const cfg = await configRef.get();
+  const watermerk = cfg.exists ? cfg.data().laatsteGeslaagdeRun || null : null;
+
+  // Watermerk in plaats van een vast venster van 7 dagen: als een run faalt of
+  // overgeslagen wordt, ontstaat er anders een gat dat nooit meer wordt gedicht.
+  if (!vanaf) vanaf = watermerk || '2019-01-01';
 
   console.log(`🧹 Sweep bekendmakingen vanaf ${vanaf} (forceer=${forceer})`);
 
-  const { records, totaal } = await zoekBekendmakingen({ vanaf });
+  // Klein: alleen publicaties die ooit faalden. Eén keer lezen in plaats van per
+  // record, want een backfill loopt over honderden records.
+  const pogingenPerId = new Map();
+  (await mislukRef.get()).forEach(d => pogingenPerId.set(d.id, d.data().pogingen || 0));
+
+  const { records, totaal } = await _zoek({ vanaf });
   console.log(`   ${records.length} publicaties gevonden (API meldt ${totaal}).`);
 
   // Pre-load de al verwerkte document-IDs uit Firestore. Hiermee voorkomen we
@@ -1067,46 +1126,97 @@ async function sweepBekendmakingen(db, { vanaf, forceer = false, maxDocumenten =
     console.log(`   ${alVerwerkt.size} reeds verwerkte documenten geladen uit corpus.`);
   }
 
-  const resultaat = { gevonden: records.length, verwerkt: 0, overgeslagen: 0, mislukt: 0 };
+  const resultaat = { gevonden: records.length, verwerkt: 0, overgeslagen: 0, mislukt: 0, opgegeven: 0 };
   const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
-  let limietBereikt = false;
+  // Waarom de run stopte voordat alles bekeken was: 'limiet' of 'tijd'. Blijft
+  // null als elke publicatie aan de beurt is geweest.
+  let gestopt = null;
+
   for (const pub of records) {
     if (resultaat.verwerkt >= maxDocumenten) {
-      console.log(`   Limiet van ${maxDocumenten} nieuwe documenten bereikt; rest volgende run.`);
-      limietBereikt = true;
+      gestopt = 'limiet';
       break;
     }
+    // Een run die tegen de functietimeout loopt wordt halverwege afgebroken:
+    // dan draait herbouwAfwijkingen niet en wordt er niets vastgelegd. Liever
+    // op tijd stoppen en de rest aan de volgende run laten.
+    if (_nu() - begin > tijdsbudgetMs) {
+      gestopt = 'tijd';
+      break;
+    }
+
+    const id = pub.identifier ? toDocId(pub.identifier) : null;
+    const eerderePogingen = (id && pogingenPerId.get(id)) || 0;
+
+    // Een document dat keer op keer faalt (verdwenen pagina, geen gemeente in
+    // de metadata) mag het watermerk niet voor altijd tegenhouden.
+    if (eerderePogingen >= MAX_POGINGEN && !forceer) {
+      resultaat.opgegeven++;
+      continue;
+    }
+
+    let uitkomst;
+    let fout = null;
     try {
-      const uitkomst = await verwerkPublicatie(db, pub, { forceer, alVerwerkt });
-      resultaat[uitkomst]++;
-      if (uitkomst === 'verwerkt') await delay(2500); // rate limit Gemini (Free Tier)
+      uitkomst = await _verwerk(db, pub, { forceer, alVerwerkt });
     } catch (err) {
       console.error(`   ❌ ${pub.identifier}: ${err.message}`);
-      resultaat.mislukt++;
+      uitkomst = 'mislukt';
+      fout = err.message;
     }
+    resultaat[uitkomst]++;
+
+    if (uitkomst === 'mislukt' && id) {
+      await mislukRef.doc(id).set({
+        identifier: pub.identifier,
+        gemeente: pub.gemeente || null,
+        url: pub.url || null,
+        pogingen: eerderePogingen + 1,
+        laatsteFout: fout,
+        laatstePoging: new Date().toISOString()
+      }, { merge: true });
+    }
+    if (uitkomst === 'verwerkt') await delay(2500); // rate limit Gemini (Free Tier)
   }
 
-  const afgeleid = await herbouwAfwijkingen(db);
+  if (gestopt) {
+    console.log(gestopt === 'limiet'
+      ? `   Limiet van ${maxDocumenten} nieuwe documenten bereikt; rest volgende run.`
+      : `   Tijdsbudget op; rest volgende run.`);
+  }
 
-  // Watermerk alleen bijwerken als ALLES verwerkt is, met een dag overlap
-  // tegen publicaties die net na de vorige run zijn toegevoegd. Stopte de run
-  // op de limiet of mislukte er een document, dan blijft het watermerk staan:
-  // anders valt de rest buiten het venster van elke volgende run en wordt hij
-  // nooit meer bekeken. Al verwerkte documenten worden overgeslagen, dus
-  // opnieuw beginnen bij het oude watermerk kost geen AI-calls.
-  const compleet = !limietBereikt && resultaat.mislukt === 0;
-  const gisteren = new Date();
+  const afgeleid = await _herbouw(db);
+
+  // Het watermerk schuift alleen op als elke publicatie in dit venster is
+  // verwerkt, overgeslagen of opgegeven. Schoof het ook na een afgebroken of
+  // deels mislukte run op, dan bleven de publicaties die niet aan de beurt
+  // kwamen voorgoed buiten beeld: de volgende run begint pas na dat watermerk.
+  const volledig = !gestopt && resultaat.mislukt === 0;
+
+  // Een handmatige run met een vanaf ná het watermerk bekijkt niet het hele
+  // venster, dus die mag het watermerk ook niet over het gat heen tillen.
+  const dektWatermerk = !watermerk || vanaf <= watermerk;
+
+  const gisteren = new Date(_nu());
   gisteren.setDate(gisteren.getDate() - 1);
-  await configRef.set({
-    ...(compleet ? { laatsteGeslaagdeRun: gisteren.toISOString().split('T')[0] } : {}),
-    laatsteRunOp: new Date().toISOString(),
-    laatsteRunCompleet: compleet,
-    laatsteResultaat: { ...resultaat, ...afgeleid, compleet }
-  }, { merge: true });
 
-  console.log(`🧹 Sweep klaar:`, JSON.stringify({ ...resultaat, ...afgeleid }));
-  return { ...resultaat, ...afgeleid };
+  // `compleet` en laatsteRunCompleet zijn dezelfde vlag onder de naam die
+  // main al gebruikte; beide blijven, zodat niets wat erop leest breekt.
+  const samenvatting = { ...resultaat, ...afgeleid, volledig, compleet: volledig, gestopt };
+  const update = {
+    laatsteRunOp: new Date(_nu()).toISOString(),
+    laatsteRunCompleet: volledig,
+    laatsteResultaat: samenvatting
+  };
+  // Met een dag overlap tegen publicaties die net na de vorige run zijn
+  // toegevoegd.
+  if (volledig && dektWatermerk) update.laatsteGeslaagdeRun = gisteren.toISOString().split('T')[0];
+
+  await configRef.set(update, { merge: true });
+
+  console.log(`🧹 Sweep klaar:`, JSON.stringify(samenvatting));
+  return { ...samenvatting, watermerk: update.laatsteGeslaagdeRun || watermerk };
 }
 
 module.exports = {
@@ -1117,6 +1227,8 @@ module.exports = {
   zoekBekendmakingen,
   bouwCqlQuery,
   sweepBekendmakingen,
+  MAX_POGINGEN,
+  bronLinkUitMapping,
   herbouwAfwijkingen,
   herbeoordeelDocument,
   leidGemeenteAf,

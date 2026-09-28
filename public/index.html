@@ -740,7 +740,9 @@
 
       const gevraagd = new URL(location.href).searchParams.get('gemeente');
       if (gevraagd) {
-        const pad = paden.find(p => p.dataset.id === gevraagd);
+        // Ook een met de hand getypte link als ?gemeente=hengelo moet werken.
+        const gid = vindId(gevraagd);
+        const pad = paden.find(p => p.dataset.id === gid);
         if (pad) { kies(pad.dataset.id, pad.dataset.naam); zoomNaar(pad); }
       }
     } catch (e) {
