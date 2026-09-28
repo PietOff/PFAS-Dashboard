@@ -94,13 +94,25 @@ const GEVALLEN_3 = [
   { gemeente: 'Noord-Beveland', docs: [], zoek: null }
 ];
 
+// Vierde ronde: de artikelen zelf, waar de derde ronde alleen de inhoudsopgave
+// of de wonen/industrie-regel liet zien.
+const GEVALLEN_4 = [
+  // Bevelanden en Tholen: art. 5 lid 1 (landbouw/natuur) in de eigen nota.
+  { gemeente: 'Borsele', docs: ['gmb-2024-227327'], zoek: /PFOS \(som\)|regio Bevelanden en Tholen/ },
+  { gemeente: 'Goes', docs: ['gmb-2022-464666'], zoek: /PFOS \(som\)|regio Bevelanden en Tholen/ },
+  { gemeente: 'Noord-Beveland', docs: ['gmb-2020-304142'], zoek: /PFOS \(som\)|toepassingsnorm.{0,80}PFAS/i },
+  // Achterhoek: de tekst van §2.5.11 zelf (niet de inhoudsopgave).
+  { gemeente: 'Oude IJsselstreek', docs: ['gmb-2024-31587'], zoek: /2\.5\.11 Toepassen van PFAS-houdende grond bij de toepassingseis kwaliteitsklasse ‘Wonen’ of ‘Industrie’ (?!2\.6|26)/ },
+  { gemeente: 'Oost Gelre', docs: [], zoek: null }
+];
+
 // Bij buurgemeenten zonder vooraf bekend document: zoek in hun eigen nota's
 // naar de PFAS-artikelen.
 const AUTO_ZOEK = /PFAS.{0,200}(µg|μg)|2\.5\.11|achtergrondwaarden mag|lokale maximale waarde/i;
 const AUTO_TITEL = /nota bodembeheer|bodemkwaliteitskaart|PFAS|bodembeleid/i;
 
 const RONDE = (process.argv.find(a => a.startsWith('--ronde=')) || '--ronde=2').split('=')[1];
-const GEVALLEN = RONDE === '3' ? GEVALLEN_3 : GEVALLEN_2;
+const GEVALLEN = { 3: GEVALLEN_3, 4: GEVALLEN_4 }[RONDE] || GEVALLEN_2;
 
 const VENSTER = 1400;
 const MAX_PER_DOC = 9000;
@@ -135,8 +147,24 @@ const titelVan = (tekst) => {
   return m ? m[1].slice(0, 160) : null;
 };
 
+// De SRU van overheid.nl reageert soms even niet (timeout); een nieuwe poging
+// na een paar seconden lukt dan meestal. Zelfde wachttijden als check-bronnen.js.
+const SRU_WACHTTIJDEN_MS = [5000, 15000, 30000];
+
+async function zoekMetHerkansing() {
+  for (let poging = 0; ; poging++) {
+    try {
+      return await zoekBekendmakingen({ vanaf: '2019-01-01', maxRecords: 3000 });
+    } catch (err) {
+      if (poging >= SRU_WACHTTIJDEN_MS.length) throw err;
+      console.error(`SRU: ${err.message}; nieuwe poging over ${SRU_WACHTTIJDEN_MS[poging] / 1000} s`);
+      await new Promise(res => setTimeout(res, SRU_WACHTTIJDEN_MS[poging]));
+    }
+  }
+}
+
 async function main() {
-  const { records } = await zoekBekendmakingen({ vanaf: '2019-01-01', maxRecords: 3000 });
+  const { records } = await zoekMetHerkansing();
   const perGemeente = new Map();
   for (const r of records) {
     const id = toDocId(r.gemeente);

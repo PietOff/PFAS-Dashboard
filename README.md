@@ -371,9 +371,9 @@ Nagelezen (2026-09-26), met de besluiten in `pfas_normen.json`:
 | Utrecht, meerdere zones | Woerden, Vijfheerenlanden | per zone |
 | Utrecht (gemeente) | Utrecht | PFOS 2,19 · PFOA 4,35 (eigen beleid 2020, bovenste meter) |
 | Zuid-Kennemerland-IJmond | Beverwijk, Bloemendaal, Heemskerk, Heemstede, Uitgeest, Velsen, Zandvoort | PFOS 2,6 (bovengrond) |
-| Achterhoek | Montferland, Winterswijk | **strenger**: toepassingseis Wonen PFOS 1,4 · PFOA 1,9 · overig 1,4 |
+| Achterhoek | Aalten, Berkelland, Bronckhorst, Doetinchem, Montferland, Oude IJsselstreek, Winterswijk | **strenger**: toepassingseis Wonen PFOS 1,4 · PFOA 1,9 · overig 1,4 |
 | Nijmegen | Nijmegen | **strenger**: wonen en industrie PFOA 1,9 · overig (incl. PFOS) 1,4 |
-| Bevelanden en Tholen | Tholen | PFOS 1,5 voor grond uit de regio |
+| Bevelanden en Tholen | Borsele, Goes, Noord-Beveland, Tholen | PFOS 1,5 voor grond uit de regio |
 | Reimerswaal | Reimerswaal | PFOS 3,0 voor eigen grond; strook Westerschelde PFOS 15 · PFOA 7 |
 | Hardenberg | Hardenberg | PFOA 30 · PFOS 29 in vier bodembeheergebieden, elders landelijk |
 
@@ -394,6 +394,13 @@ Zoetermeer. Twijfel, op `mogelijkAfwijkend` met de reden: Amersfoort, Baarn, Bun
 Eemnes, Lopik, Woudenberg (geen vaststelling gevonden), Montfoort (vaststelling zonder
 inhoud), De Ronde Venen en Buren (alleen ontwerp) en Nissewaard (lokale waarden van 2020,
 nu strenger dan landelijk).
+
+Buurgemeenten onder dezelfde regionale nota (2026-09-28): Aalten, Berkelland, Bronckhorst,
+Doetinchem en Oude IJsselstreek stelden de Nota bodembeheer regio Achterhoek vast, Borsele, Goes
+en Noord-Beveland de Bodemkwaliteitskaart PFAS Bevelanden en Tholen; ze staan nu als afwijkend.
+Van Kapelle en Oost Gelre is geen vaststelling gevonden; die staan op `mogelijkAfwijkend`.
+Zoetermeer blijft landelijk: de Nota bodembeheer 2022 bepaalt de PFAS-toepassingseis met het
+generieke kader.
 
 Let op: de sweep vindt intrekkingsbesluiten niet, omdat die geen bodemterm bevatten. De
 zes ingetrokken beleidsregels hierboven stonden daardoor nog als signaal in het corpus.
