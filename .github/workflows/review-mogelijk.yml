@@ -1,12 +1,23 @@
 name: Review mogelijk afwijkend beleid
 
 # Zet per gemeente met 'mogelijk-afwijkend' beleid de passages met PFAS-waarden
-# uit het brondocument op een rij, plus de eigen publicaties van die gemeente.
-# Beslist niets: het is leesvoer om per gemeente te bepalen of het beleid echt
-# afwijkt. Draait hier omdat overheid.nl vanaf de runner bereikbaar is.
+# uit het brondocument op een rij, plus de eigen publicaties, intrekkingen en
+# CVDR-regelingen van die gemeente. Beslist niets: het is leesvoer om per
+# gemeente te bepalen of het beleid echt afwijkt. Draait hier omdat overheid.nl
+# vanaf de runner bereikbaar is.
+#
+# Het resultaat komt als artifact én op de branch `review-bewijs`
+# (review/bewijs.json). Die branch leest de wekelijkse Claude-routine: een
+# cloudsessie kan overheid.nl niet bereiken en geen workflows starten, maar wel
+# een branch lezen.
 
 on:
   workflow_dispatch:
+  # Maandag 05:00 UTC, na de wekelijkse herbouw van 03:00.
+  schedule:
+    - cron: '0 5 * * 1'
+  # Na elke wijziging van de normen (normen-live.yml).
+  workflow_call:
   pull_request:
     paths:
       - 'pfasApi_code/review-mogelijk.js'
@@ -14,7 +25,7 @@ on:
       - '.github/workflows/review-mogelijk.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   review:
@@ -42,3 +53,27 @@ jobs:
           name: review-mogelijk
           path: /tmp/review.json
           retention-days: 30
+
+      # Niet bij een pull request: dan zou elke PR-run de branch overschrijven
+      # met bewijs van code die nog niet op main staat.
+      - name: Bewijs publiceren op branch review-bewijs
+        if: github.event_name != 'pull_request'
+        working-directory: ${{ runner.temp }}
+        env:
+          REPO: ${{ github.repository }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          git clone --quiet --depth 1 --branch review-bewijs \
+            "https://x-access-token:${TOKEN}@github.com/${REPO}.git" bewijs \
+          || { git init --quiet bewijs && git -C bewijs checkout --quiet -b review-bewijs \
+               && git -C bewijs remote add origin "https://x-access-token:${TOKEN}@github.com/${REPO}.git"; }
+          mkdir -p bewijs/review
+          cp /tmp/review.json bewijs/review/bewijs.json
+          cd bewijs
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add review/bewijs.json
+          if git diff --cached --quiet; then echo 'Geen wijziging in het bewijs.'; exit 0; fi
+          git commit --quiet -m "Bewijs mogelijk afwijkend beleid (${GITHUB_SHA:0:7})"
+          git push --quiet origin review-bewijs

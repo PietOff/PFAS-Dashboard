@@ -36,6 +36,12 @@ on:
         description: 'Functies overslaan (komma-gescheiden), bijv. healthCheck'
         required: false
         default: ''
+  # Aangeroepen door normen-live.yml na een merge die pfas_normen.json wijzigt.
+  workflow_call:
+    inputs:
+      onderdeel: { type: string, required: true }
+      bevestig: { type: string, required: true }
+      overslaan: { type: string, required: false, default: '' }
 
 env:
   PROJECT_ID: pfas-dashboard-nl-a808d

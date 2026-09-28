@@ -62,6 +62,56 @@ function passages(tekst) {
 
 const docUrl = (id, url) => url || (id ? `https://zoek.officielebekendmakingen.nl/${id}.html` : null);
 
+// Intrekkingsbesluiten vallen buiten de zoekvraag van de sweep: ze noemen PFAS
+// maar geen bodemterm ("Besluit tot intrekking van de Beleidsregel PFAS").
+// Daardoor stonden zes ingetrokken beleidsregels nog als signaal in het corpus.
+async function zoekIntrekkingen(gemeente) {
+  const query = `c.product-area=="officielepublicaties" and dt.creator="${gemeente}" ` +
+    'and cql.textAndIndexes="PFAS" and dt.title any "intrekking intrekken ingetrokken"';
+  const url = 'https://repository.overheid.nl/sru?version=1.2&operation=searchRetrieve' +
+    `&x-connection=oep&maximumRecords=20&query=${encodeURIComponent(query)}`;
+  try {
+    const r = await axios.get(url, {
+      timeout: 30000, responseType: 'text', transformResponse: [(d) => d],
+      headers: { 'Accept': 'application/xml', 'User-Agent': 'PFASDashboard/1.0 (overheid-monitoring)' }
+    });
+    const uit = [];
+    for (const [, rec] of String(r.data).matchAll(/<(?:\w+:)?recordData[^>]*>([\s\S]*?)<\/(?:\w+:)?recordData>/g)) {
+      const veld = (f) => (rec.match(new RegExp(`<(?:\\w+:)?${f}[^>]*>([^<]+)<\\/`)) || [])[1] || null;
+      uit.push({ document: veld('identifier'), titel: veld('title'), datum: veld('modified') || veld('date') });
+    }
+    return uit;
+  } catch (err) {
+    return [{ fout: err.message }];
+  }
+}
+
+// Het register lokale regelgeving (CVDR) bevat de geldende regels van een
+// gemeente, ook als de bekendmaking alleen "vastgesteld" zegt en de inhoud in
+// een bijlage staat (Montfoort). Het is ook het beste bewijs dat iets ontbreekt:
+// staat er geen bodemnota, dan is er waarschijnlijk geen vastgesteld beleid.
+async function zoekCvdr(gemeente) {
+  const url = 'https://lokaleregelgeving.overheid.nl/ZoekResultaat?count=100&onderwerpen=milieu' +
+    `&gemeenten=${encodeURIComponent(gemeente)}`;
+  try {
+    const r = await axios.get(url, {
+      timeout: 30000, responseType: 'text', transformResponse: [(d) => d],
+      headers: { 'User-Agent': 'Mozilla/5.0 (PFASDashboard/1.0)' }
+    });
+    const gezien = new Set();
+    const uit = [];
+    for (const [, id, titel] of String(r.data).matchAll(/href="\/(CVDR\d+)(?:\/\d+)?"[^>]*>\s*([^<]{3,200})</g)) {
+      const t = titel.replace(/\s+/g, ' ').trim();
+      if (gezien.has(id) || !/bodem|grond|PFAS|bagger/i.test(t)) continue;
+      gezien.add(id);
+      uit.push({ cvdr: id, titel: t, url: `https://lokaleregelgeving.overheid.nl/${id}` });
+    }
+    return uit;
+  } catch (err) {
+    return [{ fout: err.message }];
+  }
+}
+
 async function main() {
   const r = await axios.get(`${SITE}/api/v1/gemeenten`, { timeout: 60000 });
   const lijst = r.data.filter(g => g.herkomst === 'mogelijk-afwijkend');
@@ -117,8 +167,12 @@ async function main() {
       });
     }
 
+    item.intrekkingen = await zoekIntrekkingen(g.gemeente);
+    item.cvdr = await zoekCvdr(g.gemeente);
+
     rapport.push(item);
-    console.error(`✓ ${g.gemeente}: ${item.passages.length} passages, ${item.eigenPublicaties.length} eigen publicaties`);
+    console.error(`✓ ${g.gemeente}: ${item.passages.length} passages, ${item.eigenPublicaties.length} eigen publicaties, ` +
+      `${item.intrekkingen.length} intrekkingen, ${item.cvdr.length} CVDR-regelingen`);
   }
 
   const json = JSON.stringify({ tijdstip: new Date().toISOString(), rapport }, null, 2) + '\n';
@@ -139,6 +193,8 @@ async function main() {
       console.log(`  -- eigen publicatie ${e.document} | ${e.titel} | ${e.datum}`);
       e.passages.forEach((p, i) => console.log(`     [${i + 1}] ${p}`));
     }
+    for (const x of it.intrekkingen) console.log(`  -- intrekking ${x.document || ''} | ${x.titel || x.fout} | ${x.datum || ''}`);
+    for (const c of it.cvdr) console.log(`  -- CVDR ${c.cvdr || ''} | ${c.titel || c.fout} | ${c.url || ''}`);
   }
 }
 

@@ -405,6 +405,19 @@ generieke kader.
 Let op: de sweep vindt intrekkingsbesluiten niet, omdat die geen bodemterm bevatten. De
 zes ingetrokken beleidsregels hierboven stonden daardoor nog als signaal in het corpus.
 
+### Automatisch bijhouden
+
+- **Maandag 03:00** herbouwt de functie de toestand per gemeente; **maandag 05:00**
+  verzamelt `review-mogelijk.yml` bewijs voor alles wat op `mogelijk-afwijkend` staat:
+  passages uit het brondocument, eigen publicaties, **intrekkingsbesluiten** en de
+  bodemregelingen uit het **register lokale regelgeving (CVDR)**. Het resultaat staat op
+  de branch `review-bewijs` (`review/bewijs.json`).
+- Een wekelijkse **Claude-routine** leest dat bewijs, leest de besluiten na en opent een
+  pull request met voorgestelde wijzigingen in `pfas_normen.json`. De AI levert nog
+  steeds geen getallen zonder dat een mens de PR goedkeurt.
+- Na de **merge** zet `normen-live.yml` het automatisch live: tests, deploy van de
+  functions, herbouw en nieuw bewijs.
+
 Het corpus bevatte bij de controle **25 van de 999** relevante publicaties: de
 backfill vanaf 2019 is nooit afgemaakt. Draai na deploy de sweep met
 `vanaf=2019-01-01` tot `verwerkt: 0` en handel de signalen af zoals hierboven.

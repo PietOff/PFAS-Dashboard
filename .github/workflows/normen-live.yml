@@ -1,0 +1,42 @@
+name: Normen live zetten
+
+# Zet een gemergde wijziging van pfas_normen.json automatisch live:
+#   1. deploy van de functions (daar zit pfas_normen.json in), met tests vooraf
+#   2. herbouw: de toestand per gemeente opnieuw afleiden
+#   3. nieuw bewijs voor wat nog op 'mogelijk afwijkend' staat
+#
+# De normen zelf worden alleen via een pull request gewijzigd; deze workflow
+# voert na de merge alleen uit wat anders met de hand gebeurde.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'pfasApi_code/pfas_normen.json'
+  workflow_dispatch:
+
+# Nooit twee deploys tegelijk; een nieuwere merge wacht op de lopende.
+concurrency:
+  group: normen-live
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy.yml
+    with:
+      onderdeel: functions
+      bevestig: DEPLOY
+    secrets: inherit
+
+  herbouw:
+    needs: deploy
+    uses: ./.github/workflows/data-onderhoud.yml
+    with:
+      actie: herbouw
+
+  bewijs:
+    needs: herbouw
+    uses: ./.github/workflows/review-mogelijk.yml
