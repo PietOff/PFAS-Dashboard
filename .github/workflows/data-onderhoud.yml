@@ -29,9 +29,9 @@ on:
         required: false
         default: ''
       max:
-        description: 'Alleen bij sweep — documenten per run. Hoger dan ~50 loopt tegen de 9-minuten functietimeout aan.'
+        description: 'Alleen bij sweep — documenten per run. Met AI-extractie en rate-limiting duurt 15 documenten ca. 5 minuten (binnen 9m timeout).'
         required: false
-        default: '40'
+        default: '15'
       bevestig:
         description: 'Alleen bij dubbelen-echt — typ VERWIJDER om te bevestigen'
         required: false

@@ -63,7 +63,7 @@ async function syncGoogleSheetToFirestore(db, sheetId) {
               updateData.genx = {
                 wonen: parseFloat(row.genx_wonen) || 3.0,
                 industrie: parseFloat(row.genx_industrie) || 3.0,
-                landbouwNatuur: parseFloat(row.genx_natuur) || 0.8
+                landbouwNatuur: parseFloat(row.genx_natuur) || 1.4
               };
             }
             

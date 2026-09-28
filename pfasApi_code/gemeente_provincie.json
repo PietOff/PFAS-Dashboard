@@ -1,0 +1,1370 @@
+{
+ "'s-Gravenhage": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0518"
+ },
+ "'s-Hertogenbosch": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0796"
+ },
+ "Aa en Hunze": {
+  "provincie": "Drenthe",
+  "cbsCode": "GM1680"
+ },
+ "Aalsmeer": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0358"
+ },
+ "Aalten": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0197"
+ },
+ "Achtkarspelen": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM0059"
+ },
+ "Alblasserdam": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0482"
+ },
+ "Albrandswaard": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0613"
+ },
+ "Alkmaar": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0361"
+ },
+ "Almelo": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0141"
+ },
+ "Almere": {
+  "provincie": "Flevoland",
+  "cbsCode": "GM0034"
+ },
+ "Alphen aan den Rijn": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0484"
+ },
+ "Alphen-Chaam": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1723"
+ },
+ "Altena": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1959"
+ },
+ "Ameland": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM0060"
+ },
+ "Amersfoort": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0307"
+ },
+ "Amstelveen": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0362"
+ },
+ "Amsterdam": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0363"
+ },
+ "Apeldoorn": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0200"
+ },
+ "Arnhem": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0202"
+ },
+ "Assen": {
+  "provincie": "Drenthe",
+  "cbsCode": "GM0106"
+ },
+ "Asten": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0743"
+ },
+ "Baarle-Nassau": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0744"
+ },
+ "Baarn": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0308"
+ },
+ "Barendrecht": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0489"
+ },
+ "Barneveld": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0203"
+ },
+ "Beek": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0888"
+ },
+ "Beekdaelen": {
+  "provincie": "Limburg",
+  "cbsCode": "GM1954"
+ },
+ "Beesel": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0889"
+ },
+ "Berg en Dal": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM1945"
+ },
+ "Bergeijk": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1724"
+ },
+ "Bergen (L)": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0893"
+ },
+ "Bergen (NH)": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0373"
+ },
+ "Bergen op Zoom": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0748"
+ },
+ "Berkelland": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM1859"
+ },
+ "Bernheze": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1721"
+ },
+ "Best": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0753"
+ },
+ "Beuningen": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0209"
+ },
+ "Beverwijk": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0375"
+ },
+ "Bladel": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1728"
+ },
+ "Blaricum": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0376"
+ },
+ "Bloemendaal": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0377"
+ },
+ "Bodegraven-Reeuwijk": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM1901"
+ },
+ "Boekel": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0755"
+ },
+ "Borger-Odoorn": {
+  "provincie": "Drenthe",
+  "cbsCode": "GM1681"
+ },
+ "Borne": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0147"
+ },
+ "Borsele": {
+  "provincie": "Zeeland",
+  "cbsCode": "GM0654"
+ },
+ "Boxtel": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0757"
+ },
+ "Breda": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0758"
+ },
+ "Bronckhorst": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM1876"
+ },
+ "Brummen": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0213"
+ },
+ "Brunssum": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0899"
+ },
+ "Bunnik": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0312"
+ },
+ "Bunschoten": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0313"
+ },
+ "Buren": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0214"
+ },
+ "Capelle aan den IJssel": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0502"
+ },
+ "Castricum": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0383"
+ },
+ "Coevorden": {
+  "provincie": "Drenthe",
+  "cbsCode": "GM0109"
+ },
+ "Cranendonck": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1706"
+ },
+ "Culemborg": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0216"
+ },
+ "Dalfsen": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0148"
+ },
+ "Dantumadiel": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM1891"
+ },
+ "De Bilt": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0310"
+ },
+ "De Fryske Marren": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM1940"
+ },
+ "De Ronde Venen": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0736"
+ },
+ "De Wolden": {
+  "provincie": "Drenthe",
+  "cbsCode": "GM1690"
+ },
+ "Delft": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0503"
+ },
+ "Den Helder": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0400"
+ },
+ "Deurne": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0762"
+ },
+ "Deventer": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0150"
+ },
+ "Diemen": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0384"
+ },
+ "Dijk en Waard": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM1980"
+ },
+ "Dinkelland": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM1774"
+ },
+ "Doesburg": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0221"
+ },
+ "Doetinchem": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0222"
+ },
+ "Dongen": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0766"
+ },
+ "Dordrecht": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0505"
+ },
+ "Drechterland": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0498"
+ },
+ "Drimmelen": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1719"
+ },
+ "Dronten": {
+  "provincie": "Flevoland",
+  "cbsCode": "GM0303"
+ },
+ "Druten": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0225"
+ },
+ "Duiven": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0226"
+ },
+ "Echt-Susteren": {
+  "provincie": "Limburg",
+  "cbsCode": "GM1711"
+ },
+ "Edam-Volendam": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0385"
+ },
+ "Ede": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0228"
+ },
+ "Eemnes": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0317"
+ },
+ "Eemsdelta": {
+  "provincie": "Groningen",
+  "cbsCode": "GM1979"
+ },
+ "Eersel": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0770"
+ },
+ "Eijsden-Margraten": {
+  "provincie": "Limburg",
+  "cbsCode": "GM1903"
+ },
+ "Eindhoven": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0772"
+ },
+ "Elburg": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0230"
+ },
+ "Emmen": {
+  "provincie": "Drenthe",
+  "cbsCode": "GM0114"
+ },
+ "Enkhuizen": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0388"
+ },
+ "Enschede": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0153"
+ },
+ "Epe": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0232"
+ },
+ "Ermelo": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0233"
+ },
+ "Etten-Leur": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0777"
+ },
+ "Geertruidenberg": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0779"
+ },
+ "Geldrop-Mierlo": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1771"
+ },
+ "Gemert-Bakel": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1652"
+ },
+ "Gennep": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0907"
+ },
+ "Gilze en Rijen": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0784"
+ },
+ "Goeree-Overflakkee": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM1924"
+ },
+ "Goes": {
+  "provincie": "Zeeland",
+  "cbsCode": "GM0664"
+ },
+ "Goirle": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0785"
+ },
+ "Gooise Meren": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM1942"
+ },
+ "Gorinchem": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0512"
+ },
+ "Gouda": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0513"
+ },
+ "Groningen": {
+  "provincie": "Groningen",
+  "cbsCode": "GM0014"
+ },
+ "Gulpen-Wittem": {
+  "provincie": "Limburg",
+  "cbsCode": "GM1729"
+ },
+ "Haaksbergen": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0158"
+ },
+ "Haarlem": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0392"
+ },
+ "Haarlemmermeer": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0394"
+ },
+ "Halderberge": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1655"
+ },
+ "Hardenberg": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0160"
+ },
+ "Harderwijk": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0243"
+ },
+ "Hardinxveld-Giessendam": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0523"
+ },
+ "Harlingen": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM0072"
+ },
+ "Hattem": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0244"
+ },
+ "Heemskerk": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0396"
+ },
+ "Heemstede": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0397"
+ },
+ "Heerde": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0246"
+ },
+ "Heerenveen": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM0074"
+ },
+ "Heerlen": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0917"
+ },
+ "Heeze-Leende": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1658"
+ },
+ "Heiloo": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0399"
+ },
+ "Hellendoorn": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0163"
+ },
+ "Helmond": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0794"
+ },
+ "Hendrik-Ido-Ambacht": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0531"
+ },
+ "Hengelo (O)": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0164"
+ },
+ "Het Hogeland": {
+  "provincie": "Groningen",
+  "cbsCode": "GM1966"
+ },
+ "Heumen": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0252"
+ },
+ "Heusden": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0797"
+ },
+ "Hillegom": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0534"
+ },
+ "Hilvarenbeek": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0798"
+ },
+ "Hilversum": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0402"
+ },
+ "Hoeksche Waard": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM1963"
+ },
+ "Hof van Twente": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM1735"
+ },
+ "Hollands Kroon": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM1911"
+ },
+ "Hoogeveen": {
+  "provincie": "Drenthe",
+  "cbsCode": "GM0118"
+ },
+ "Hoorn": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0405"
+ },
+ "Horst aan de Maas": {
+  "provincie": "Limburg",
+  "cbsCode": "GM1507"
+ },
+ "Houten": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0321"
+ },
+ "Huizen": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0406"
+ },
+ "Hulst": {
+  "provincie": "Zeeland",
+  "cbsCode": "GM0677"
+ },
+ "IJsselstein": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0353"
+ },
+ "Kaag en Braassem": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM1884"
+ },
+ "Kampen": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0166"
+ },
+ "Kapelle": {
+  "provincie": "Zeeland",
+  "cbsCode": "GM0678"
+ },
+ "Katwijk": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0537"
+ },
+ "Kerkrade": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0928"
+ },
+ "Koggenland": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM1598"
+ },
+ "Krimpen aan den IJssel": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0542"
+ },
+ "Krimpenerwaard": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM1931"
+ },
+ "Laarbeek": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1659"
+ },
+ "Land van Cuijk": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1982"
+ },
+ "Landgraaf": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0882"
+ },
+ "Landsmeer": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0415"
+ },
+ "Lansingerland": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM1621"
+ },
+ "Laren": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0417"
+ },
+ "Leeuwarden": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM0080"
+ },
+ "Leiden": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0546"
+ },
+ "Leiderdorp": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0547"
+ },
+ "Leidschendam-Voorburg": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM1916"
+ },
+ "Lelystad": {
+  "provincie": "Flevoland",
+  "cbsCode": "GM0995"
+ },
+ "Leudal": {
+  "provincie": "Limburg",
+  "cbsCode": "GM1640"
+ },
+ "Leusden": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0327"
+ },
+ "Lingewaard": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM1705"
+ },
+ "Lisse": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0553"
+ },
+ "Lochem": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0262"
+ },
+ "Loon op Zand": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0809"
+ },
+ "Lopik": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0331"
+ },
+ "Losser": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0168"
+ },
+ "Maasdriel": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0263"
+ },
+ "Maasgouw": {
+  "provincie": "Limburg",
+  "cbsCode": "GM1641"
+ },
+ "Maashorst": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1991"
+ },
+ "Maassluis": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0556"
+ },
+ "Maastricht": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0935"
+ },
+ "Medemblik": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0420"
+ },
+ "Meerssen": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0938"
+ },
+ "Meierijstad": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1948"
+ },
+ "Meppel": {
+  "provincie": "Drenthe",
+  "cbsCode": "GM0119"
+ },
+ "Middelburg": {
+  "provincie": "Zeeland",
+  "cbsCode": "GM0687"
+ },
+ "Midden-Delfland": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM1842"
+ },
+ "Midden-Drenthe": {
+  "provincie": "Drenthe",
+  "cbsCode": "GM1731"
+ },
+ "Midden-Groningen": {
+  "provincie": "Groningen",
+  "cbsCode": "GM1952"
+ },
+ "Moerdijk": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1709"
+ },
+ "Molenlanden": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM1978"
+ },
+ "Montferland": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM1955"
+ },
+ "Montfoort": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0335"
+ },
+ "Mook en Middelaar": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0944"
+ },
+ "Neder-Betuwe": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM1740"
+ },
+ "Nederweert": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0946"
+ },
+ "Nieuwegein": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0356"
+ },
+ "Nieuwkoop": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0569"
+ },
+ "Nijkerk": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0267"
+ },
+ "Nijmegen": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0268"
+ },
+ "Nissewaard": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM1930"
+ },
+ "Noardeast-Fryslân": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM1970"
+ },
+ "Noord-Beveland": {
+  "provincie": "Zeeland",
+  "cbsCode": "GM1695"
+ },
+ "Noordenveld": {
+  "provincie": "Drenthe",
+  "cbsCode": "GM1699"
+ },
+ "Noordoostpolder": {
+  "provincie": "Flevoland",
+  "cbsCode": "GM0171"
+ },
+ "Noordwijk": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0575"
+ },
+ "Nuenen, Gerwen en Nederwetten": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0820"
+ },
+ "Nunspeet": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0302"
+ },
+ "Oegstgeest": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0579"
+ },
+ "Oirschot": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0823"
+ },
+ "Oisterwijk": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0824"
+ },
+ "Oldambt": {
+  "provincie": "Groningen",
+  "cbsCode": "GM1895"
+ },
+ "Oldebroek": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0269"
+ },
+ "Oldenzaal": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0173"
+ },
+ "Olst-Wijhe": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM1773"
+ },
+ "Ommen": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0175"
+ },
+ "Oost Gelre": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM1586"
+ },
+ "Oosterhout": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0826"
+ },
+ "Ooststellingwerf": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM0085"
+ },
+ "Oostzaan": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0431"
+ },
+ "Opmeer": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0432"
+ },
+ "Opsterland": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM0086"
+ },
+ "Oss": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0828"
+ },
+ "Oude IJsselstreek": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM1509"
+ },
+ "Ouder-Amstel": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0437"
+ },
+ "Oudewater": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0589"
+ },
+ "Overbetuwe": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM1734"
+ },
+ "Papendrecht": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0590"
+ },
+ "Peel en Maas": {
+  "provincie": "Limburg",
+  "cbsCode": "GM1894"
+ },
+ "Pekela": {
+  "provincie": "Groningen",
+  "cbsCode": "GM0765"
+ },
+ "Pijnacker-Nootdorp": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM1926"
+ },
+ "Purmerend": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0439"
+ },
+ "Putten": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0273"
+ },
+ "Raalte": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0177"
+ },
+ "Reimerswaal": {
+  "provincie": "Zeeland",
+  "cbsCode": "GM0703"
+ },
+ "Renkum": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0274"
+ },
+ "Renswoude": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0339"
+ },
+ "Reusel-De Mierden": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1667"
+ },
+ "Rheden": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0275"
+ },
+ "Rhenen": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0340"
+ },
+ "Ridderkerk": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0597"
+ },
+ "Rijssen-Holten": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM1742"
+ },
+ "Rijswijk": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0603"
+ },
+ "Roerdalen": {
+  "provincie": "Limburg",
+  "cbsCode": "GM1669"
+ },
+ "Roermond": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0957"
+ },
+ "Roosendaal": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM1674"
+ },
+ "Rotterdam": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0599"
+ },
+ "Rozendaal": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0277"
+ },
+ "Rucphen": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0840"
+ },
+ "Schagen": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0441"
+ },
+ "Scherpenzeel": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0279"
+ },
+ "Schiedam": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0606"
+ },
+ "Schiermonnikoog": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM0088"
+ },
+ "Schouwen-Duiveland": {
+  "provincie": "Zeeland",
+  "cbsCode": "GM1676"
+ },
+ "Simpelveld": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0965"
+ },
+ "Sint-Michielsgestel": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0845"
+ },
+ "Sittard-Geleen": {
+  "provincie": "Limburg",
+  "cbsCode": "GM1883"
+ },
+ "Sliedrecht": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0610"
+ },
+ "Sluis": {
+  "provincie": "Zeeland",
+  "cbsCode": "GM1714"
+ },
+ "Smallingerland": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM0090"
+ },
+ "Soest": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0342"
+ },
+ "Someren": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0847"
+ },
+ "Son en Breugel": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0848"
+ },
+ "Stadskanaal": {
+  "provincie": "Groningen",
+  "cbsCode": "GM0037"
+ },
+ "Staphorst": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0180"
+ },
+ "Stede Broec": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0532"
+ },
+ "Steenbergen": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0851"
+ },
+ "Steenwijkerland": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM1708"
+ },
+ "Stein": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0971"
+ },
+ "Stichtse Vecht": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM1904"
+ },
+ "Súdwest-Fryslân": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM1900"
+ },
+ "Terneuzen": {
+  "provincie": "Zeeland",
+  "cbsCode": "GM0715"
+ },
+ "Terschelling": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM0093"
+ },
+ "Texel": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0448"
+ },
+ "Teylingen": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM1525"
+ },
+ "Tholen": {
+  "provincie": "Zeeland",
+  "cbsCode": "GM0716"
+ },
+ "Tiel": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0281"
+ },
+ "Tilburg": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0855"
+ },
+ "Tubbergen": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0183"
+ },
+ "Twenterand": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM1700"
+ },
+ "Tynaarlo": {
+  "provincie": "Drenthe",
+  "cbsCode": "GM1730"
+ },
+ "Tytsjerksteradiel": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM0737"
+ },
+ "Uitgeest": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0450"
+ },
+ "Uithoorn": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0451"
+ },
+ "Urk": {
+  "provincie": "Flevoland",
+  "cbsCode": "GM0184"
+ },
+ "Utrecht": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0344"
+ },
+ "Utrechtse Heuvelrug": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM1581"
+ },
+ "Vaals": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0981"
+ },
+ "Valkenburg aan de Geul": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0994"
+ },
+ "Valkenswaard": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0858"
+ },
+ "Veendam": {
+  "provincie": "Groningen",
+  "cbsCode": "GM0047"
+ },
+ "Veenendaal": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0345"
+ },
+ "Veere": {
+  "provincie": "Zeeland",
+  "cbsCode": "GM0717"
+ },
+ "Veldhoven": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0861"
+ },
+ "Velsen": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0453"
+ },
+ "Venlo": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0983"
+ },
+ "Venray": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0984"
+ },
+ "Vijfheerenlanden": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM1961"
+ },
+ "Vlaardingen": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0622"
+ },
+ "Vlieland": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM0096"
+ },
+ "Vlissingen": {
+  "provincie": "Zeeland",
+  "cbsCode": "GM0718"
+ },
+ "Voerendaal": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0986"
+ },
+ "Voorne aan Zee": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM1992"
+ },
+ "Voorschoten": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0626"
+ },
+ "Voorst": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0285"
+ },
+ "Vught": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0865"
+ },
+ "Waadhoeke": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM1949"
+ },
+ "Waalre": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0866"
+ },
+ "Waalwijk": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0867"
+ },
+ "Waddinxveen": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0627"
+ },
+ "Wageningen": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0289"
+ },
+ "Wassenaar": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0629"
+ },
+ "Waterland": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0852"
+ },
+ "Weert": {
+  "provincie": "Limburg",
+  "cbsCode": "GM0988"
+ },
+ "West Betuwe": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM1960"
+ },
+ "West Maas en Waal": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0668"
+ },
+ "Westerkwartier": {
+  "provincie": "Groningen",
+  "cbsCode": "GM1969"
+ },
+ "Westerveld": {
+  "provincie": "Drenthe",
+  "cbsCode": "GM1701"
+ },
+ "Westervoort": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0293"
+ },
+ "Westerwolde": {
+  "provincie": "Groningen",
+  "cbsCode": "GM1950"
+ },
+ "Westland": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM1783"
+ },
+ "Weststellingwerf": {
+  "provincie": "Fryslân",
+  "cbsCode": "GM0098"
+ },
+ "Wierden": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0189"
+ },
+ "Wijchen": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0296"
+ },
+ "Wijdemeren": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM1696"
+ },
+ "Wijk bij Duurstede": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0352"
+ },
+ "Winterswijk": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0294"
+ },
+ "Woensdrecht": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0873"
+ },
+ "Woerden": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0632"
+ },
+ "Wormerland": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0880"
+ },
+ "Woudenberg": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0351"
+ },
+ "Zaanstad": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0479"
+ },
+ "Zaltbommel": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0297"
+ },
+ "Zandvoort": {
+  "provincie": "Noord-Holland",
+  "cbsCode": "GM0473"
+ },
+ "Zeewolde": {
+  "provincie": "Flevoland",
+  "cbsCode": "GM0050"
+ },
+ "Zeist": {
+  "provincie": "Utrecht",
+  "cbsCode": "GM0355"
+ },
+ "Zevenaar": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0299"
+ },
+ "Zoetermeer": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0637"
+ },
+ "Zoeterwoude": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0638"
+ },
+ "Zuidplas": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM1892"
+ },
+ "Zundert": {
+  "provincie": "Noord-Brabant",
+  "cbsCode": "GM0879"
+ },
+ "Zutphen": {
+  "provincie": "Gelderland",
+  "cbsCode": "GM0301"
+ },
+ "Zwartewaterland": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM1896"
+ },
+ "Zwijndrecht": {
+  "provincie": "Zuid-Holland",
+  "cbsCode": "GM0642"
+ },
+ "Zwolle": {
+  "provincie": "Overijssel",
+  "cbsCode": "GM0193"
+ }
+}

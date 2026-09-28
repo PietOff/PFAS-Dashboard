@@ -23,7 +23,7 @@ async function clean() {
       const defaultData = {
         pfoa: { wonen: 7, industrie: 7, landbouwNatuur: 1.9 },
         pfos: { wonen: 3, industrie: 3, landbouwNatuur: 1.4 },
-        genx: { wonen: 3, industrie: 3, landbouwNatuur: 0.8 },
+        genx: { wonen: 3, industrie: 3, landbouwNatuur: 1.4 },
         opmerkingen: (data.opmerkingen || '') + " [AI retourneerde onwaarschijnlijke waarden, gereset naar landelijk kader].",
         confidenceScore: 0
       };

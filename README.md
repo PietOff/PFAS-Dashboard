@@ -253,18 +253,20 @@ of `herbouw` in het dashboard, zonder `fixLinks` (die ook alle waarden terugzet)
 
 ### Juistheid: kloppen de getallen?
 
-De sweep leidt de getallen af uit officiële gemeentebladen. Dat is de enige
-machineleesbare bron die als vaststaand mag gelden: wat daar staat is juridisch
-bindend vastgesteld beleid.
+De sweep zoekt in officiële gemeentebladen naar besluiten met mogelijk
+afwijkende normen. **Getallen uit de AI komen nooit in het dashboard**: een
+vondst maakt de gemeente `mogelijk-afwijkend` (landelijk kader + waarschuwing)
+tot een mens het besluit heeft nagelezen en de waarden in `pfas_normen.json`
+heeft gezet. Zie *Normen-controle september 2026* hieronder voor waarom.
 
-Alleen dat is niet genoeg om een getal te vertrouwen. Er zitten drie horden
-tussen "de AI las een getal" en "dit getal komt in het dashboard":
+Om de signalen bruikbaar te houden:
 
 1. **Plausibiliteit.** Waarden buiten 0–50 µg/kg ds worden verworpen; dat is
-   bijna altijd een eenheidsverwarring (ng/kg) of een ander stofnummer.
-2. **Zekerheid.** Alleen `aiZekerheid: "hoog"` telt mee bij het afleiden.
-3. **Nooit null overschrijven.** Vult de AI maar één klasse in, dan blijven de
-   andere staan op wat er al was of op het landelijk kader.
+   bijna altijd een eenheidsverwarring (ng/kg) of een ander stofnummer. Waarden
+   ≤ 0,1 zijn de bepalingsgrens (grondwaterbeschermingsgebied) en tellen niet.
+2. **Herbeoordeling.** Elk document wordt bij elke herbouw opnieuw vergeleken met
+   het huidige kader, zodat een fout in het kader niet blijft doorwerken.
+3. **Ontwerpbesluiten** tellen nooit als vastgesteld.
 
 Om zo min mogelijk afwijkingen te missen:
 
@@ -293,8 +295,8 @@ Daarom krijgt elke gemeente een expliciete `herkomst`:
 
 | `herkomst` | Betekenis |
 | --- | --- |
-| `officiele-bekendmaking` | Waarden komen uit een gemeenteblad; `bronDocument` verwijst naar het exacte besluit |
-| `mogelijk-afwijkend` | Er is een afwijking gevonden maar niet geverifieerd. Toont het landelijk kader, met verwijzing naar het besluit. `tereviewen: true` |
+| `curatie` | Nagelezen afwijking uit `pfas_normen.json`; `bronDocument` verwijst naar het besluit |
+| `mogelijk-afwijkend` | Er is een afwijking gesignaleerd maar niet nagelezen. Toont het landelijk kader, met verwijzing naar het besluit. `tereviewen: true` |
 | `landelijk-kader-aanname` | **Geen document gevonden.** Het landelijk kader is aangenomen, niet vastgesteld |
 | `handmatig` | Handmatig overschreven via de Google Sheet |
 
@@ -314,6 +316,69 @@ Voor iemand die op basis hiervan grond laat keuren is het verschil tussen "dit
 is vastgesteld beleid" en "hier is niets over gevonden" precies het verschil dat
 telt. Het dashboard hoort daarbij door te verwijzen naar de bronlink en de
 omgevingsdienst — het vervangt geen milieuhygiënische verklaring.
+
+### Normen-controle september 2026: alleen nagelezen getallen
+
+Een inhoudelijke controle tegen IPLO en de besluiten zelf vond dat de getallen
+in het dashboard grotendeels niet klopten, terwijl elke technische controle
+"gezond" meldde:
+
+1. **GenX landbouw/natuur stond op 0,8; het is 1,4** (handelingskader dec 2023:
+   "overige PFAS incl. GenX"). De 0,8 is de waarde voor oppervlaktewater.
+2. **Alle elf AI-"afwijkingen" waren fout getoond.** Zeven nota's herhaalden het
+   kader; Almere kwam erop via een ontwerpbesluit en een tabel voor moestuinen;
+   Houten via de drinkwatergebied-eis 0,1. Maasdriel en Zaltbommel hadden wél een
+   echte afwijking, maar de AI miste dat die voor de hele regio Rivierenland geldt.
+3. **De echte afwijkingen werden elke maandag gewist** door de herbouw, en
+   `nightlyBekendmakingen` schreef AI-getallen rechtstreeks weg.
+4. **De gecureerde waarden zelf klopten deels niet.** OZHZ zone B heeft PFOS
+   2,4 (stond 1,4); Helmond kent geen gemeentebrede waarde maar een waarde per
+   zone (er stonden verzonnen "middenwaarden").
+5. **Heel Utrecht, Rivierenland en Zuid-Kennemerland ontbraken.**
+6. **Zes gemeenten stonden bij de verkeerde omgevingsdienst** (Midden-Holland
+   bij Haaglanden; Kaag en Braassem en Nieuwkoop horen bij West-Holland), en
+   `provincie` was overal "Nederland".
+
+Het principe is nu: **de AI levert signalen, nooit getallen.**
+
+| `herkomst` | Getallen | Wanneer |
+| --- | --- | --- |
+| `curatie` | lokaal, nagelezen | in `pfas_normen.json` → `afwijkend`, met `bronDocument` en `geverifieerdOp` |
+| `mogelijk-afwijkend` | landelijk kader + waarschuwing | in `mogelijkAfwijkend` (bv. alleen een ontwerp gevonden), of een AI-signaal uit een besluit |
+| `landelijk-kader-aanname` | landelijk kader | niets gevonden — een aanname, geen vaststelling |
+| `handmatig` | uit de Google Sheet | handmatige overschrijving |
+
+Een waarde die per zone verschilt staat als `null` met `perZone`, en het
+dashboard toont "per zone". Eén getal zou verzonnen zijn.
+
+**Een AI-signaal afhandelen:** lees het besluit. Wijkt het echt af, voeg de
+gemeente toe aan `afwijkend` met de waarden, het besluit en de datum. Wijkt het
+niet af, zet het document-id in `nagelezenZonderAfwijking` met de reden, zodat
+het signaal niet elke week terugkomt. De tests eisen dat elke afwijking een
+bronbesluit heeft en dat een lege waarde verklaard is.
+
+Nagelezen (2026-09-26), met de besluiten in `pfas_normen.json`:
+
+| Regio | Gemeenten | Afwijking (landbouw/natuur tenzij anders) |
+| --- | --- | --- |
+| Zuid-Holland Zuid, zone B | Alblasserdam, Dordrecht, Gorinchem, Hardinxveld-Giessendam, Hendrik-Ido-Ambacht, Molenlanden, Papendrecht, Sliedrecht, Zwijndrecht | PFOA 2,3 · PFOS 2,4 (omgevingsplannen 2025) |
+| Rotterdam | Rotterdam | PFOS 1,6; industrie PFOS 7 voor grond uit Rotterdam |
+| Nieuwegein | Nieuwegein | PFOA 3,8 voor grond uit Nieuwegein |
+| Helmond | Helmond | per bodemkwaliteitszone |
+| Rivierenland | Culemborg, Maasdriel, Neder-Betuwe, Tiel, Zaltbommel | PFOA 2,8 voor grond uit de regio |
+| Utrecht zone B3 | Bunnik, Houten, Renswoude, Rhenen, Soest, Stichtse Vecht, Veenendaal | PFOS 1,8 · PFOA 2,9 binnen de zone |
+| Utrecht zone B2 | IJsselstein, Oudewater | PFOS 1,8 · PFOA 5,2 binnen de zone |
+| Utrecht, meerdere zones | Woerden, Vijfheerenlanden | per zone |
+| Zuid-Kennemerland-IJmond | Beverwijk, Bloemendaal, Heemskerk, Heemstede, Uitgeest, Velsen, Zandvoort | PFOS 2,6 (bovengrond) |
+
+Nagelezen en **gelijk aan het landelijk kader**: Twente, Noord-Brabant (BKK
+PFAS), Midden-Holland (wel geen dubbele toets voor grond uit de regio),
+Zaanstreek-Waterland, Noord-Veluwe, De Vallei, Moerdijk, Hoeksche Waard (zone
+A), Kerkrade en Noord- en Midden-Limburg.
+
+Het corpus bevatte bij de controle **25 van de 999** relevante publicaties: de
+backfill vanaf 2019 is nooit afgemaakt. Draai na deploy de sweep met
+`vanaf=2019-01-01` tot `verwerkt: 0` en handel de signalen af zoals hierboven.
 
 ### Kernbronnen
 
