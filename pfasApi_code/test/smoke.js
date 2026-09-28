@@ -1059,6 +1059,12 @@ test('de nagelezen getallen staan zoals in de besluiten', () => {
     ['Winterswijk', 'pfoa', 'wonen', 1.9], ['Winterswijk', 'pfos', 'wonen', 1.4],
     // Nota bodembeheer Tholen 2022 art. 5 / Reimerswaal 2023 art. 10
     ['Tholen', 'pfos', 'landbouwNatuur', 1.5], ['Reimerswaal', 'pfos', 'landbouwNatuur', 3],
+    // Bodemkwaliteitskaart PFAS Bevelanden en Tholen 2020: grond uit de regio, PFOS 1,5
+    ['Goes', 'pfos', 'landbouwNatuur', 1.5], ['Noord-Beveland', 'pfos', 'landbouwNatuur', 1.5],
+    ['Borsele', 'pfos', 'landbouwNatuur', 1.5], ['Goes', 'pfoa', 'wonen', 7],
+    // Nota bodembeheer regio Achterhoek §2.5.11, vastgesteld door de buurgemeenten
+    ['Doetinchem', 'pfos', 'wonen', 1.4], ['Bronckhorst', 'pfoa', 'wonen', 1.9],
+    ['Aalten', 'pfoa', 'industrie', 7],
     // Nota Bodembeheer 2021 Toepassen van grond Nijmegen, tabel 5
     ['Nijmegen', 'pfoa', 'wonen', 1.9], ['Nijmegen', 'pfos', 'industrie', 1.4]
   ];

@@ -1251,6 +1251,198 @@
       "bronDocumentTitel": "Omgevingsplan gemeente Zwijndrecht",
       "bronDocumentDatum": "2025-07-09",
       "geverifieerdOp": "2026-09-26"
+    },
+    "Aalten": {
+      "regio": "Achterhoek",
+      "pfos": {
+        "wonen": 1.4,
+        "industrie": 3,
+        "landbouwNatuur": 1.4
+      },
+      "pfoa": {
+        "wonen": 1.9,
+        "industrie": 7,
+        "landbouwNatuur": 1.9
+      },
+      "genx": {
+        "wonen": 1.4,
+        "industrie": 3,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer regio Achterhoek §2.5.11, door de gemeente vastgesteld (via het overgangsrecht deel van het omgevingsplan): waar op grond van de overige stoffen de toepassingseis kwaliteitsklasse Wonen geldt, mag de toe te passen grond geen PFAS boven de landelijke achtergrondwaarden bevatten: PFOS 1,4 · PFOA 1,9 · overige PFAS 1,4 µg/kg ds. Dat is strenger dan het landelijk kader. Industrie en landbouw/natuur volgen het landelijk kader. Dezelfde regionale nota als Montferland en Winterswijk.",
+      "bronLink": null,
+      "bronDocument": "gmb-2022-397200",
+      "bronDocumentTitel": "Nota bodembeheer Regio Achterhoek",
+      "bronDocumentDatum": "2022-09-05",
+      "geverifieerdOp": "2026-09-28"
+    },
+    "Berkelland": {
+      "regio": "Achterhoek",
+      "pfos": {
+        "wonen": 1.4,
+        "industrie": 3,
+        "landbouwNatuur": 1.4
+      },
+      "pfoa": {
+        "wonen": 1.9,
+        "industrie": 7,
+        "landbouwNatuur": 1.9
+      },
+      "genx": {
+        "wonen": 1.4,
+        "industrie": 3,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer regio Achterhoek §2.5.11, door de gemeente vastgesteld (via het overgangsrecht deel van het omgevingsplan): waar op grond van de overige stoffen de toepassingseis kwaliteitsklasse Wonen geldt, mag de toe te passen grond geen PFAS boven de landelijke achtergrondwaarden bevatten: PFOS 1,4 · PFOA 1,9 · overige PFAS 1,4 µg/kg ds. Dat is strenger dan het landelijk kader. Industrie en landbouw/natuur volgen het landelijk kader. Dezelfde regionale nota als Montferland en Winterswijk.",
+      "bronLink": null,
+      "bronDocument": "gmb-2021-293893",
+      "bronDocumentTitel": "Nota bodembeheer Regio Achterhoek",
+      "bronDocumentDatum": "2021-08-30",
+      "geverifieerdOp": "2026-09-28"
+    },
+    "Bronckhorst": {
+      "regio": "Achterhoek",
+      "pfos": {
+        "wonen": 1.4,
+        "industrie": 3,
+        "landbouwNatuur": 1.4
+      },
+      "pfoa": {
+        "wonen": 1.9,
+        "industrie": 7,
+        "landbouwNatuur": 1.9
+      },
+      "genx": {
+        "wonen": 1.4,
+        "industrie": 3,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer regio Achterhoek §2.5.11, door de gemeente vastgesteld (via het overgangsrecht deel van het omgevingsplan): waar op grond van de overige stoffen de toepassingseis kwaliteitsklasse Wonen geldt, mag de toe te passen grond geen PFAS boven de landelijke achtergrondwaarden bevatten: PFOS 1,4 · PFOA 1,9 · overige PFAS 1,4 µg/kg ds. Dat is strenger dan het landelijk kader. Industrie en landbouw/natuur volgen het landelijk kader. Dezelfde regionale nota als Montferland en Winterswijk.",
+      "bronLink": null,
+      "bronDocument": "gmb-2021-473906",
+      "bronDocumentTitel": "Nota bodembeheer en bodemkwaliteitskaart Regio Achterhoek",
+      "bronDocumentDatum": "2021-12-24",
+      "geverifieerdOp": "2026-09-28"
+    },
+    "Doetinchem": {
+      "regio": "Achterhoek",
+      "pfos": {
+        "wonen": 1.4,
+        "industrie": 3,
+        "landbouwNatuur": 1.4
+      },
+      "pfoa": {
+        "wonen": 1.9,
+        "industrie": 7,
+        "landbouwNatuur": 1.9
+      },
+      "genx": {
+        "wonen": 1.4,
+        "industrie": 3,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer regio Achterhoek §2.5.11, door de gemeente vastgesteld (via het overgangsrecht deel van het omgevingsplan): waar op grond van de overige stoffen de toepassingseis kwaliteitsklasse Wonen geldt, mag de toe te passen grond geen PFAS boven de landelijke achtergrondwaarden bevatten: PFOS 1,4 · PFOA 1,9 · overige PFAS 1,4 µg/kg ds. Dat is strenger dan het landelijk kader. Industrie en landbouw/natuur volgen het landelijk kader. Dezelfde regionale nota als Montferland en Winterswijk.",
+      "bronLink": null,
+      "bronDocument": "gmb-2021-210785",
+      "bronDocumentTitel": "Vastgesteld: Nota bodembeheer en bodemkwaliteitskaart regio Achterhoek 2020",
+      "bronDocumentDatum": "2021-07-07",
+      "geverifieerdOp": "2026-09-28"
+    },
+    "Oude IJsselstreek": {
+      "regio": "Achterhoek",
+      "pfos": {
+        "wonen": 1.4,
+        "industrie": 3,
+        "landbouwNatuur": 1.4
+      },
+      "pfoa": {
+        "wonen": 1.9,
+        "industrie": 7,
+        "landbouwNatuur": 1.9
+      },
+      "genx": {
+        "wonen": 1.4,
+        "industrie": 3,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer regio Achterhoek §2.5.11, door de gemeente vastgesteld (via het overgangsrecht deel van het omgevingsplan): waar op grond van de overige stoffen de toepassingseis kwaliteitsklasse Wonen geldt, mag de toe te passen grond geen PFAS boven de landelijke achtergrondwaarden bevatten: PFOS 1,4 · PFOA 1,9 · overige PFAS 1,4 µg/kg ds. Dat is strenger dan het landelijk kader. Industrie en landbouw/natuur volgen het landelijk kader. Dezelfde regionale nota als Montferland en Winterswijk.",
+      "bronLink": null,
+      "bronDocument": "gmb-2024-31587",
+      "bronDocumentTitel": "Nota bodembeheer Regio Achterhoek",
+      "bronDocumentDatum": "2024-01-18",
+      "geverifieerdOp": "2026-09-28"
+    },
+    "Borsele": {
+      "regio": "Bevelanden en Tholen",
+      "pfos": {
+        "wonen": 3,
+        "industrie": 3,
+        "landbouwNatuur": 1.5
+      },
+      "pfoa": {
+        "wonen": 7,
+        "industrie": 7,
+        "landbouwNatuur": 1.9
+      },
+      "genx": {
+        "wonen": 3,
+        "industrie": 3,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer gemeente Borsele 2023 (art. 9), voortbouwend op de door Borsele vastgestelde Bodemkwaliteitskaart PFAS Bevelanden en Tholen (gmb-2020-254842). Binnen 200 m langs de Westerschelde gelden eigen normen (art. 10), zie de nota. Voor grond uit de regio Bevelanden en Tholen (Borsele, Goes, Kapelle, Noord-Beveland, Reimerswaal, Tholen) geldt waar voor de overige stoffen de achtergrondwaarde de toepassingseis is, tot 2,0 m-mv: PFOS 1,5 · PFOA 1,9 · overige PFAS 1,4 µg/kg ds (de 95-percentielwaarde van de zone PFAS West Bevelanden en Tholen). Bij toepassingseis Wonen of Industrie: landelijk kader (PFOS 3 · PFOA 7 · overige 3). Grond van buiten de regio en dieper dan 2 m-mv: landelijke achtergrondwaarden.",
+      "bronLink": null,
+      "bronDocument": "gmb-2024-227327",
+      "bronDocumentTitel": "Nota bodembeheer gemeente Borsele 2023",
+      "bronDocumentDatum": "2024-05-28",
+      "geverifieerdOp": "2026-09-28"
+    },
+    "Goes": {
+      "regio": "Bevelanden en Tholen",
+      "pfos": {
+        "wonen": 3,
+        "industrie": 3,
+        "landbouwNatuur": 1.5
+      },
+      "pfoa": {
+        "wonen": 7,
+        "industrie": 7,
+        "landbouwNatuur": 1.9
+      },
+      "genx": {
+        "wonen": 3,
+        "industrie": 3,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Nota bodembeheer gemeente Goes, geactualiseerde versie 2022, met de regionale Bodemkwaliteitskaart PFAS Bevelanden en Tholen. Voor grond uit de regio Bevelanden en Tholen (Borsele, Goes, Kapelle, Noord-Beveland, Reimerswaal, Tholen) geldt waar voor de overige stoffen de achtergrondwaarde de toepassingseis is, tot 2,0 m-mv: PFOS 1,5 · PFOA 1,9 · overige PFAS 1,4 µg/kg ds (de 95-percentielwaarde van de zone PFAS West Bevelanden en Tholen). Bij toepassingseis Wonen of Industrie: landelijk kader (PFOS 3 · PFOA 7 · overige 3). Grond van buiten de regio en dieper dan 2 m-mv: landelijke achtergrondwaarden.",
+      "bronLink": null,
+      "bronDocument": "gmb-2022-464666",
+      "bronDocumentTitel": "Rectificatie: Nota bodembeheer gemeente Goes geactualiseerde versie 2022",
+      "bronDocumentDatum": "2022-10-19",
+      "geverifieerdOp": "2026-09-28"
+    },
+    "Noord-Beveland": {
+      "regio": "Bevelanden en Tholen",
+      "pfos": {
+        "wonen": 3,
+        "industrie": 3,
+        "landbouwNatuur": 1.5
+      },
+      "pfoa": {
+        "wonen": 7,
+        "industrie": 7,
+        "landbouwNatuur": 1.9
+      },
+      "genx": {
+        "wonen": 3,
+        "industrie": 3,
+        "landbouwNatuur": 1.4
+      },
+      "opmerkingen": "Bodemkwaliteitskaart PFAS gemeente Noord-Beveland, vastgesteld door het college op 22 september 2020, hoofdstuk 4 en bijlage 11; de Bodemkwaliteitskaart landbodem 2026 (gmb-2026-19880) verwijst er nog naar als geldende PFAS-normering. Voor grond uit de regio Bevelanden en Tholen (Borsele, Goes, Kapelle, Noord-Beveland, Reimerswaal, Tholen) geldt waar voor de overige stoffen de achtergrondwaarde de toepassingseis is, tot 2,0 m-mv: PFOS 1,5 · PFOA 1,9 · overige PFAS 1,4 µg/kg ds (de 95-percentielwaarde van de zone PFAS West Bevelanden en Tholen). Bij toepassingseis Wonen of Industrie: landelijk kader (PFOS 3 · PFOA 7 · overige 3). Grond van buiten de regio en dieper dan 2 m-mv: landelijke achtergrondwaarden.",
+      "bronLink": null,
+      "bronDocument": "gmb-2020-304142",
+      "bronDocumentTitel": "Bodemkwaliteitskaart PFAS gemeente Noord-Beveland",
+      "bronDocumentDatum": "2020-11-23",
+      "geverifieerdOp": "2026-09-28"
     }
   },
   "mogelijkAfwijkend": {
@@ -1331,6 +1523,22 @@
       "bronDocument": "gmb-2024-428959",
       "bronDocumentTitel": "Nota bodembeheer werkgebied ODRU (zonering provincie Utrecht)",
       "bronDocumentDatum": "2024-10-10",
+      "bronLink": null,
+      "geverifieerdOp": "2026-09-28"
+    },
+    "Kapelle": {
+      "opmerkingen": "De Bodemkwaliteitskaart PFAS Bevelanden en Tholen geldt volgens de kaart zelf voor alle zes gemeenten van de regio (voor grond uit de regio, landbouw/natuur: PFOS 1,5), maar wordt door elke gemeente afzonderlijk vastgesteld. Een vaststelling door Kapelle is in de officiële bekendmakingen niet gevonden (nagezocht 2026-09-28). Het dashboard toont het landelijk kader; controleer bij de gemeente of de RUD Zeeland.",
+      "bronDocument": "gmb-2020-304142",
+      "bronDocumentTitel": "Bodemkwaliteitskaart PFAS Bevelanden en Tholen (vastgesteld door Noord-Beveland)",
+      "bronDocumentDatum": "2020-11-23",
+      "bronLink": null,
+      "geverifieerdOp": "2026-09-28"
+    },
+    "Oost Gelre": {
+      "opmerkingen": "De Nota bodembeheer regio Achterhoek (§2.5.11: bij toepassingseis Wonen geen PFAS boven de landelijke achtergrondwaarden) is door de andere zeven Achterhoekse gemeenten vastgesteld. Van Oost Gelre staat geen PFAS- of bodempublicatie in de officiële bekendmakingen (nagezocht 2026-09-28). Het dashboard toont het landelijk kader; controleer bij de gemeente of de ODA.",
+      "bronDocument": "gmb-2021-357005",
+      "bronDocumentTitel": "Nota bodembeheer en bodemkwaliteitskaart Regio Achterhoek (vastgesteld door Winterswijk)",
+      "bronDocumentDatum": "2021-10-13",
       "bronLink": null,
       "geverifieerdOp": "2026-09-28"
     }
