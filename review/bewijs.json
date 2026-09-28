@@ -1,0 +1,296 @@
+{
+  "tijdstip": "2026-09-28T19:24:35.214Z",
+  "rapport": [
+    {
+      "gemeente": "Amersfoort",
+      "id": "amersfoort",
+      "bronType": "curatie",
+      "omgevingsdienst": "Omgevingsdienst Utrecht",
+      "document": "gmb-2024-428959",
+      "titel": "Nota bodembeheer werkgebied ODRU (zonering provincie Utrecht)",
+      "datum": "2024-10-10",
+      "aiWaarden": null,
+      "opmerking": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden. Een vaststelling door deze gemeente is in de officiële bekendmakingen niet gevonden (nagezocht 2026-09-28); Leusden stelde dezelfde nota wel vast zonder aparte bekendmaking, dus dat bewijst niet dat die ontbreekt. Het dashboard toont het landelijk kader; controleer bij de gemeente of de RUD Utrecht.",
+      "passages": [],
+      "eigenPublicaties": [
+        {
+          "document": "gmb-2025-568090",
+          "titel": "Uitvoering- en Handhavingsstrategie (U&amp;H strategie) Regio Utrecht 2026",
+          "datum": "2025-12-24",
+          "passages": []
+        }
+      ],
+      "tekstLengte": 0,
+      "intrekkingen": [],
+      "cvdr": [
+        {
+          "cvdr": "CVDR626546",
+          "titel": "Verordening gesloten bodemenergiesystemen gemeente Amersfoort 2019",
+          "url": "https://lokaleregelgeving.overheid.nl/CVDR626546"
+        },
+        {
+          "cvdr": "CVDR5051",
+          "titel": "Beleidsregel bevels- en kostenverhaalbeleid Wet Bodembescherming",
+          "url": "https://lokaleregelgeving.overheid.nl/CVDR5051"
+        },
+        {
+          "cvdr": "CVDR4374",
+          "titel": "Subsidieregeling bodemsanering bedrijfsterreinen 2008",
+          "url": "https://lokaleregelgeving.overheid.nl/CVDR4374"
+        },
+        {
+          "cvdr": "CVDR4376",
+          "titel": "Verordening bodemsanering Amersfoort 2006",
+          "url": "https://lokaleregelgeving.overheid.nl/CVDR4376"
+        }
+      ]
+    },
+    {
+      "gemeente": "Baarn",
+      "id": "baarn",
+      "bronType": "curatie",
+      "omgevingsdienst": "Omgevingsdienst Utrecht",
+      "document": "gmb-2024-428959",
+      "titel": "Nota bodembeheer werkgebied ODRU (zonering provincie Utrecht)",
+      "datum": "2024-10-10",
+      "aiWaarden": null,
+      "opmerking": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden. Een vaststelling door deze gemeente is in de officiële bekendmakingen niet gevonden (nagezocht 2026-09-28); Leusden stelde dezelfde nota wel vast zonder aparte bekendmaking, dus dat bewijst niet dat die ontbreekt. Het dashboard toont het landelijk kader; controleer bij de gemeente of de RUD Utrecht.",
+      "passages": [],
+      "eigenPublicaties": [
+        {
+          "document": "gmb-2026-88595",
+          "titel": "Uitvoering- en Handhavingstrategie Regio Utrecht 2026",
+          "datum": "2026-02-26",
+          "passages": []
+        }
+      ],
+      "tekstLengte": 0,
+      "intrekkingen": [],
+      "cvdr": []
+    },
+    {
+      "gemeente": "Bunschoten",
+      "id": "bunschoten",
+      "bronType": "curatie",
+      "omgevingsdienst": "Omgevingsdienst Utrecht",
+      "document": "gmb-2024-428959",
+      "titel": "Nota bodembeheer werkgebied ODRU (zonering provincie Utrecht)",
+      "datum": "2024-10-10",
+      "aiWaarden": null,
+      "opmerking": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden. Een vaststelling door deze gemeente is in de officiële bekendmakingen niet gevonden (nagezocht 2026-09-28); Leusden stelde dezelfde nota wel vast zonder aparte bekendmaking, dus dat bewijst niet dat die ontbreekt. Het dashboard toont het landelijk kader; controleer bij de gemeente of de RUD Utrecht.",
+      "passages": [],
+      "eigenPublicaties": [
+        {
+          "document": "gmb-2026-274037",
+          "titel": "VTH-beleid gemeente Bunschoten 2026-2030",
+          "datum": "2026-06-10",
+          "passages": []
+        },
+        {
+          "document": "gmb-2025-456832",
+          "titel": "Beleidsregel Uitvoering- en handhavingstrategie Regio Utrecht",
+          "datum": "2025-10-22",
+          "passages": []
+        },
+        {
+          "document": "gmb-2021-33441",
+          "titel": "Nota bodembeleid geactualiseerd",
+          "datum": "2021-02-03",
+          "passages": []
+        }
+      ],
+      "tekstLengte": 0,
+      "intrekkingen": [],
+      "cvdr": [
+        {
+          "cvdr": "CVDR746377",
+          "titel": "Beleidsregel voor de omgang van bodemverontreiniging en bodemsanering gemeente Bunschoten 2025",
+          "url": "https://lokaleregelgeving.overheid.nl/CVDR746377"
+        },
+        {
+          "cvdr": "CVDR331170",
+          "titel": "Bodembeheernota",
+          "url": "https://lokaleregelgeving.overheid.nl/CVDR331170"
+        },
+        {
+          "cvdr": "CVDR112091",
+          "titel": "Bodemfunctiekaart Bunschoten",
+          "url": "https://lokaleregelgeving.overheid.nl/CVDR112091"
+        }
+      ]
+    },
+    {
+      "gemeente": "Buren",
+      "id": "buren",
+      "bronType": "curatie",
+      "omgevingsdienst": "Omgevingsdienst Rivierenland",
+      "document": "gmb-2021-428289",
+      "titel": "Nota bodembeheer regio Rivierenland",
+      "datum": "2021-11-29",
+      "aiWaarden": null,
+      "opmerking": "De Nota bodembeheer regio Rivierenland noemt Buren als deelnemer (PFOA landbouw/natuur 2,8 µg/kg ds voor grond uit de regio). Van Buren is alleen de terinzagelegging (februari 2021) gevonden, geen vaststellingsbesluit (nagezocht 2026-09-28). Het dashboard toont het landelijk kader; controleer bij de gemeente.",
+      "passages": [],
+      "eigenPublicaties": [],
+      "tekstLengte": 0,
+      "intrekkingen": [],
+      "cvdr": []
+    },
+    {
+      "gemeente": "Eemnes",
+      "id": "eemnes",
+      "bronType": "curatie",
+      "omgevingsdienst": "Omgevingsdienst Utrecht",
+      "document": "gmb-2024-428959",
+      "titel": "Nota bodembeheer werkgebied ODRU (zonering provincie Utrecht)",
+      "datum": "2024-10-10",
+      "aiWaarden": null,
+      "opmerking": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden. Een vaststelling door deze gemeente is in de officiële bekendmakingen niet gevonden (nagezocht 2026-09-28); Leusden stelde dezelfde nota wel vast zonder aparte bekendmaking, dus dat bewijst niet dat die ontbreekt. Het dashboard toont het landelijk kader; controleer bij de gemeente of de RUD Utrecht.",
+      "passages": [],
+      "eigenPublicaties": [
+        {
+          "document": "gmb-2025-547524",
+          "titel": "Beleidsregel Uitvoering- en handhavingstrategie Regio Utrecht",
+          "datum": "2025-12-16",
+          "passages": []
+        },
+        {
+          "document": "gmb-2024-450837",
+          "titel": "Het overnemen van provinciaal bodembeleid voor een beleidsneutrale overgang bodemtaken Omgevingswet",
+          "datum": "2024-10-25",
+          "passages": []
+        }
+      ],
+      "tekstLengte": 0,
+      "intrekkingen": [],
+      "cvdr": [
+        {
+          "cvdr": "CVDR725896",
+          "titel": "bodembeleid beleidsneutrale overgang bodemtaken Omgevingswet Eemnes",
+          "url": "https://lokaleregelgeving.overheid.nl/CVDR725896"
+        },
+        {
+          "cvdr": "CVDR684522",
+          "titel": "Beleidsregels grondopstelling zonnepanelen voor eigen gebruik",
+          "url": "https://lokaleregelgeving.overheid.nl/CVDR684522"
+        },
+        {
+          "cvdr": "CVDR77530",
+          "titel": "Verordening op de afvoer van hemelwater en grondwater Eemnes",
+          "url": "https://lokaleregelgeving.overheid.nl/CVDR77530"
+        }
+      ]
+    },
+    {
+      "gemeente": "Kapelle",
+      "id": "kapelle",
+      "bronType": "curatie",
+      "omgevingsdienst": "RUD Zeeland",
+      "document": "gmb-2020-304142",
+      "titel": "Bodemkwaliteitskaart PFAS Bevelanden en Tholen (vastgesteld door Noord-Beveland)",
+      "datum": "2020-11-23",
+      "aiWaarden": null,
+      "opmerking": "De Bodemkwaliteitskaart PFAS Bevelanden en Tholen geldt volgens de kaart zelf voor alle zes gemeenten van de regio (voor grond uit de regio, landbouw/natuur: PFOS 1,5), maar wordt door elke gemeente afzonderlijk vastgesteld. Een vaststelling door Kapelle is in de officiële bekendmakingen niet gevonden (nagezocht 2026-09-28). Het dashboard toont het landelijk kader; controleer bij de gemeente of de RUD Zeeland.",
+      "passages": [],
+      "eigenPublicaties": [
+        {
+          "document": "gmb-2026-106451",
+          "titel": "Uitvoerings- en Handhavingsbeleid Zeeland 2025-2028",
+          "datum": "2026-03-09",
+          "passages": []
+        },
+        {
+          "document": "gmb-2022-537917",
+          "titel": "Bekendmaking vastgestelde bodemkwaliteitskaart voor de dijkversterking Hansweert",
+          "datum": "2022-12-05",
+          "passages": []
+        },
+        {
+          "document": "gmb-2022-109907",
+          "titel": "Bodemkwaliteitskaart met bodembeheerplan in verband met dijkversterking Hansweert",
+          "datum": "2022-03-14",
+          "passages": []
+        }
+      ],
+      "tekstLengte": 0,
+      "intrekkingen": [],
+      "cvdr": [
+        {
+          "cvdr": "CVDR695650",
+          "titel": "Aanwijzingsbesluit Bovengrondse verzamelcontainer voor restafval Biezelingsestraat Kapelle",
+          "url": "https://lokaleregelgeving.overheid.nl/CVDR695650"
+        },
+        {
+          "cvdr": "CVDR684290",
+          "titel": "Bodemkwaliteitskaart voor de dijkversterking Hansweert",
+          "url": "https://lokaleregelgeving.overheid.nl/CVDR684290"
+        },
+        {
+          "cvdr": "CVDR165631",
+          "titel": "Nota bodembeheer en bodemkwaliteitskaart",
+          "url": "https://lokaleregelgeving.overheid.nl/CVDR165631"
+        }
+      ]
+    },
+    {
+      "gemeente": "Lopik",
+      "id": "lopik",
+      "bronType": "curatie",
+      "omgevingsdienst": "Omgevingsdienst Utrecht",
+      "document": "gmb-2024-428959",
+      "titel": "Nota bodembeheer werkgebied ODRU (zonering provincie Utrecht)",
+      "datum": "2024-10-10",
+      "aiWaarden": null,
+      "opmerking": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden. Een vaststelling door deze gemeente is in de officiële bekendmakingen niet gevonden (nagezocht 2026-09-28); Leusden stelde dezelfde nota wel vast zonder aparte bekendmaking, dus dat bewijst niet dat die ontbreekt. Het dashboard toont het landelijk kader; controleer bij de gemeente of de RUD Utrecht.",
+      "passages": [],
+      "eigenPublicaties": [
+        {
+          "document": "gmb-2025-542140",
+          "titel": "Beleidsregel Uitvoering- en handhavingstrategie Regio Utrecht",
+          "datum": "2025-12-16",
+          "passages": []
+        }
+      ],
+      "tekstLengte": 0,
+      "intrekkingen": [],
+      "cvdr": [
+        {
+          "cvdr": "CVDR655305",
+          "titel": "Beleidsnota Snippergrond 2021",
+          "url": "https://lokaleregelgeving.overheid.nl/CVDR655305"
+        }
+      ]
+    },
+    {
+      "gemeente": "Oost Gelre",
+      "id": "oost-gelre",
+      "bronType": "curatie",
+      "omgevingsdienst": "Omgevingsdienst Achterhoek",
+      "document": "gmb-2021-357005",
+      "titel": "Nota bodembeheer en bodemkwaliteitskaart Regio Achterhoek (vastgesteld door Winterswijk)",
+      "datum": "2021-10-13",
+      "aiWaarden": null,
+      "opmerking": "De Nota bodembeheer regio Achterhoek (§2.5.11: bij toepassingseis Wonen geen PFAS boven de landelijke achtergrondwaarden) is door de andere zeven Achterhoekse gemeenten vastgesteld. Van Oost Gelre staat geen PFAS- of bodempublicatie in de officiële bekendmakingen (nagezocht 2026-09-28). Het dashboard toont het landelijk kader; controleer bij de gemeente of de ODA.",
+      "passages": [],
+      "eigenPublicaties": [],
+      "tekstLengte": 0,
+      "intrekkingen": [],
+      "cvdr": []
+    },
+    {
+      "gemeente": "Woudenberg",
+      "id": "woudenberg",
+      "bronType": "curatie",
+      "omgevingsdienst": "Omgevingsdienst Utrecht",
+      "document": "gmb-2024-428959",
+      "titel": "Nota bodembeheer werkgebied ODRU (zonering provincie Utrecht)",
+      "datum": "2024-10-10",
+      "aiWaarden": null,
+      "opmerking": "De provinciale Beleidsnota PFAS Utrecht deelt deze gemeente in bij een PFAS-zone met lokale maximale waarden. Een vaststelling door deze gemeente is in de officiële bekendmakingen niet gevonden (nagezocht 2026-09-28); Leusden stelde dezelfde nota wel vast zonder aparte bekendmaking, dus dat bewijst niet dat die ontbreekt. Het dashboard toont het landelijk kader; controleer bij de gemeente of de RUD Utrecht.",
+      "passages": [],
+      "eigenPublicaties": [],
+      "tekstLengte": 0,
+      "intrekkingen": [],
+      "cvdr": []
+    }
+  ]
+}
