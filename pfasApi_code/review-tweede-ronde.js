@@ -16,7 +16,8 @@
  * Beslist niets en schrijft niets.
  */
 
-const { haalDocumentTekst, zoekBekendmakingen } = require('./checkBekendmakingen');
+const { zoekBekendmakingen } = require('./checkBekendmakingen');
+const { haalMetTerugval, vindplaatsen } = require('./review-ophalen');
 const { toDocId } = require('./docId');
 
 const docUrl = (id) => `https://zoek.officielebekendmakingen.nl/${id}.html`;
@@ -165,6 +166,7 @@ async function zoekMetHerkansing() {
 
 async function main() {
   const { records } = await zoekMetHerkansing();
+  const vindplaats = vindplaatsen(records);
   const perGemeente = new Map();
   for (const r of records) {
     const id = toDocId(r.gemeente);
@@ -184,7 +186,8 @@ async function main() {
       : eigen.filter(p => AUTO_TITEL.test(p.title || '')).slice(-3).map(p => p.identifier);
     const zoek = g.zoek || AUTO_ZOEK;
     for (const id of docs) {
-      const tekst = await haalDocumentTekst(docUrl(id));
+      const { tekst } = await haalMetTerugval(id, { url: docUrl(id), vindplaats });
+      if (!tekst) console.log(`  !! ${id}: niet opgehaald, ook niet via repository.overheid.nl`);
       console.log(`  -- ${id}: ${tekst ? tekst.length : 0} tekens | ${titelVan(tekst) || ''}`);
       passages(tekst, zoek).forEach((p, i) => console.log(`     [${i + 1}] ${p}`));
     }

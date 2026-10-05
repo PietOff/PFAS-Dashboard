@@ -21,7 +21,8 @@
  */
 
 const axios = require('axios');
-const { haalDocumentTekst, zoekBekendmakingen } = require('./checkBekendmakingen');
+const { zoekBekendmakingen } = require('./checkBekendmakingen');
+const { haalMetTerugval, vindplaatsen } = require('./review-ophalen');
 const { toDocId } = require('./docId');
 
 const SITE = 'https://pfas-dashboard-nl-a808d.web.app';
@@ -120,8 +121,11 @@ async function main() {
   // Eén SRU-zoekvraag voor alles, dan per gemeente groeperen: goedkoper dan
   // 48 losse zoekvragen, en dezelfde query als de sweep.
   let perGemeente = new Map();
+  let vindplaats = new Map();
+  let sruFout = null;
   try {
     const { records } = await zoekBekendmakingen({ vanaf: '2019-01-01', maxRecords: 3000 });
+    vindplaats = vindplaatsen(records);
     for (const rec of records) {
       const id = toDocId(rec.gemeente);
       if (!perGemeente.has(id)) perGemeente.set(id, []);
@@ -129,9 +133,13 @@ async function main() {
     }
   } catch (err) {
     console.error('SRU niet bereikbaar:', err.message);
+    sruFout = err.message;
   }
 
   const rapport = [];
+  // Documenten die ook na herkansing en terugval niet binnenkwamen. Zonder
+  // tekst is het bewijs leeg; dat mag niet stil als 'niets gevonden' tellen.
+  const ontbrekend = [];
   for (const g of lijst) {
     const item = {
       gemeente: g.gemeente,
@@ -149,9 +157,10 @@ async function main() {
 
     const url = docUrl(g.bronDocument, g.bronDocumentLink);
     if (url) {
-      const tekst = await haalDocumentTekst(url);
+      const { tekst } = await haalMetTerugval(g.bronDocument, { url, vindplaats });
       item.tekstLengte = tekst ? tekst.length : 0;
       item.passages = passages(tekst);
+      if (!tekst) { item.tekstOntbreekt = true; ontbrekend.push(g.bronDocument || url); }
     }
 
     // Publicaties van de gemeente zelf: daar staat een eventuele vaststelling.
@@ -160,9 +169,11 @@ async function main() {
       .sort((a, b) => String(b.date).localeCompare(String(a.date)))
       .slice(0, 4);
     for (const p of eigen) {
-      const tekst = await haalDocumentTekst(docUrl(p.identifier, p.url));
+      const { tekst } = await haalMetTerugval(p.identifier, { url: docUrl(p.identifier, p.url), vindplaats });
+      if (!tekst) ontbrekend.push(p.identifier);
       item.eigenPublicaties.push({
         document: p.identifier, titel: p.title, datum: p.date,
+        tekstOntbreekt: !tekst || undefined,
         passages: passages(tekst).slice(0, 4)
       });
     }
@@ -175,8 +186,14 @@ async function main() {
       `${item.intrekkingen.length} intrekkingen, ${item.cvdr.length} CVDR-regelingen`);
   }
 
-  const json = JSON.stringify({ tijdstip: new Date().toISOString(), rapport }, null, 2) + '\n';
+  if (sruFout) ontbrekend.push(`SRU-zoekvraag (${sruFout})`);
+  const volledig = ontbrekend.length === 0;
+  if (!volledig) console.error(`⚠ ${ontbrekend.length} document(en) niet opgehaald: ${[...new Set(ontbrekend)].join(', ')}`);
+  const json = JSON.stringify({ tijdstip: new Date().toISOString(), volledig, ontbrekend: [...new Set(ontbrekend)], rapport }, null, 2) + '\n';
   if (uitPad) require('fs').writeFileSync(uitPad, json);
+  // Onvolledig bewijs: de workflow publiceert het dan niet, zodat het laatste
+  // volledige bewijs op de branch review-bewijs blijft staan.
+  if (!volledig) process.exitCode = 3;
   if (alsJson) {
     process.stdout.write(json);
     return;
