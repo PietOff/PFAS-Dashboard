@@ -46,7 +46,7 @@ jobs:
         run: node review-mogelijk.js --uit=/tmp/review.json
       # Gerichte tweede ronde voor de gevallen die de eerste niet kon beslissen.
       - name: Tweede ronde
-        run: node review-tweede-ronde.js --ronde=4
+        run: node review-tweede-ronde.js --ronde=5
       - uses: actions/upload-artifact@v4
         if: always()
         with:

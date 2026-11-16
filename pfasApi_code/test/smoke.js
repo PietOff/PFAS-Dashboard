@@ -1093,6 +1093,46 @@ test('elke gemeente krijgt een provincie en een omgevingsdienst', () => {
 });
 
 // ------------------------------------------------------------------
+test('de review valt terug op repository.overheid.nl als zoek.officielebekendmakingen.nl blokkeert', async () => {
+  const { haalMetTerugval, vindplaatsen } = require('../review-ophalen');
+  const repo = 'https://repository.overheid.nl/frbr/officielepublicaties/gmb/2024/gmb-2024-428959/1/html/gmb-2024-428959.html';
+  const vindplaats = vindplaatsen([
+    { identifier: 'gmb-2024-428959', url: repo },
+    { identifier: 'gmb-2020-1', url: 'https://zoek.officielebekendmakingen.nl/gmb-2020-1.html' }
+  ]);
+  assert.strictEqual(vindplaats.size, 1, 'een zoek.-URL is geen terugval');
+
+  // 28-9-2026: elke aanvraag bij zoek.officielebekendmakingen.nl gaf 403.
+  const gevraagd = [];
+  const haal = async (u) => { gevraagd.push(u); return u === repo ? 'Nota bodembeheer PFOS 1,8' : null; };
+  const r = await haalMetTerugval('gmb-2024-428959', { vindplaats, _haal: haal, wachtMs: 0 });
+  assert.strictEqual(r.tekst, 'Nota bodembeheer PFOS 1,8');
+  assert.strictEqual(r.url, repo);
+  assert.strictEqual(gevraagd.length, 3, 'eerst twee keer de gevraagde URL, dan de vindplaats');
+
+  // Niets bereikbaar: eerlijk null, geen lege string die als 'niets gevonden' telt.
+  const leeg = await haalMetTerugval('gmb-2099-1', { vindplaats, _haal: async () => null, wachtMs: 0 });
+  assert.strictEqual(leeg.tekst, null);
+
+  // De eerste poging lukt: geen onnodige verzoeken.
+  let n = 0;
+  await haalMetTerugval('gmb-2024-428959', { vindplaats, _haal: async () => { n++; return 'tekst'; }, wachtMs: 0 });
+  assert.strictEqual(n, 1);
+});
+
+test('onvolledig reviewbewijs wordt niet gepubliceerd', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const bron = fs.readFileSync(path.join(__dirname, '..', 'review-mogelijk.js'), 'utf8');
+  assert.ok(/volledig/.test(bron) && /process\.exitCode\s*=\s*3/.test(bron), 'review-mogelijk.js meldt onvolledig bewijs niet');
+  const wf = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'review-mogelijk.yml'), 'utf8');
+  // De publicatiestap mag niet met always() draaien: dan overschrijft een
+  // geblokkeerde run het laatste volledige bewijs.
+  const stap = wf.split(/- name: /).find(b => /^Bewijs publiceren/.test(b)) || '';
+  assert.ok(stap && !/always\(\)/.test(stap.split('\n')[1] || ''), 'publicatiestap draait ook na een mislukte bewijsstap');
+});
+
+// ------------------------------------------------------------------
 (async () => {
   let geslaagd = 0;
   let gefaald = 0;

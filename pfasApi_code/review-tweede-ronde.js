@@ -16,7 +16,8 @@
  * Beslist niets en schrijft niets.
  */
 
-const { haalDocumentTekst, zoekBekendmakingen } = require('./checkBekendmakingen');
+const { zoekBekendmakingen } = require('./checkBekendmakingen');
+const { haalMetTerugval, vindplaatsen } = require('./review-ophalen');
 const { toDocId } = require('./docId');
 
 const docUrl = (id) => `https://zoek.officielebekendmakingen.nl/${id}.html`;
@@ -112,7 +113,15 @@ const AUTO_ZOEK = /PFAS.{0,200}(µg|μg)|2\.5\.11|achtergrondwaarden mag|lokale 
 const AUTO_TITEL = /nota bodembeheer|bodemkwaliteitskaart|PFAS|bodembeleid/i;
 
 const RONDE = (process.argv.find(a => a.startsWith('--ronde=')) || '--ronde=2').split('=')[1];
-const GEVALLEN = { 3: GEVALLEN_3, 4: GEVALLEN_4 }[RONDE] || GEVALLEN_2;
+// Vijfde ronde (16-11-2026): nieuwe beleidsregel Hoeksche Waard met PFOA-maatwerk
+// voor 'zone B'. Welk gebied zone B is en wat de voorwaarden a-e zijn, viel
+// buiten de passages van het weekbewijs.
+const GEVALLEN_5 = [
+  { gemeente: 'Hoeksche Waard', docs: ['gmb-2026-496874'],
+    zoek: /zone B|zone A|Artikel 1\b|begripsbepaling|als volgt|voorwaarden:|bijlage|kaart/i }
+];
+
+const GEVALLEN = { 3: GEVALLEN_3, 4: GEVALLEN_4, 5: GEVALLEN_5 }[RONDE] || GEVALLEN_2;
 
 const VENSTER = 1400;
 const MAX_PER_DOC = 9000;
@@ -165,6 +174,7 @@ async function zoekMetHerkansing() {
 
 async function main() {
   const { records } = await zoekMetHerkansing();
+  const vindplaats = vindplaatsen(records);
   const perGemeente = new Map();
   for (const r of records) {
     const id = toDocId(r.gemeente);
@@ -184,7 +194,8 @@ async function main() {
       : eigen.filter(p => AUTO_TITEL.test(p.title || '')).slice(-3).map(p => p.identifier);
     const zoek = g.zoek || AUTO_ZOEK;
     for (const id of docs) {
-      const tekst = await haalDocumentTekst(docUrl(id));
+      const { tekst } = await haalMetTerugval(id, { url: docUrl(id), vindplaats });
+      if (!tekst) console.log(`  !! ${id}: niet opgehaald, ook niet via repository.overheid.nl`);
       console.log(`  -- ${id}: ${tekst ? tekst.length : 0} tekens | ${titelVan(tekst) || ''}`);
       passages(tekst, zoek).forEach((p, i) => console.log(`     [${i + 1}] ${p}`));
     }
